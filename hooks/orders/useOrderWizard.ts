@@ -3,9 +3,11 @@
 import { useMemo, useReducer } from "react";
 
 export type OrderWizardStepId =
-  | "participants"
   | "mirror"
-  | "dimensions"
+  | "frame"
+  | "sandblast"
+  | "mirrorComponents"
+  | "participants"
   | "schedule"
   | "review";
 
@@ -63,29 +65,39 @@ const STEPS: Array<{
   description: string;
 }> = [
   {
-    id: "participants",
-    title: "Customer & Cutter",
-    description: "Assign stakeholders responsible for this work order.",
-  },
-  {
     id: "mirror",
-    title: "Mirror Configuration",
-    description: "Select mirror template and feature modules.",
+    title: "قالب آینه",
+    description: "انتخاب قالب آینه.",
   },
   {
-    id: "dimensions",
-    title: "Dimensions & Quantity",
-    description: "Capture measurements, quantities, and extra options.",
+    id: "frame",
+    title: "قاب",
+    description: "انتخاب قاب آینه.",
+  },
+  {
+    id: "sandblast",
+    title: "سندبلاست",
+    description: "انتخاب سندبلاست آینه.",
+  },
+  {
+    id: "mirrorComponents",
+    title: "پیکربندی آینه",
+    description: "انتخاب نخ نوری، ضخامت و ماژول‌های آینه.",
+  },
+  {
+    id: "participants",
+    title: "مشتری و برشکار",
+    description: "تعیین ذینفعان مسئول این سفارش کار.",
   },
   {
     id: "schedule",
-    title: "Schedule & Notes",
-    description: "Define production window and optional notes.",
+    title: "زمان‌بندی و یادداشت‌ها",
+    description: "تعریف بازه تولید و یادداشت‌های اختیاری.",
   },
   {
     id: "review",
-    title: "Review & Submit",
-    description: "Double-check details before submitting the order.",
+    title: "بررسی و ارسال",
+    description: "بررسی مجدد جزئیات قبل از ارسال سفارش.",
   },
 ];
 
@@ -141,11 +153,13 @@ function validateStep(stepIndex: number, data: OrderWizardData) {
     case "participants":
       return Boolean(data.customer && data.cutter);
     case "mirror":
-      return Boolean(data.mirror && data.frame && data.lightThread && data.thickness);
-    case "dimensions":
-      return Boolean(
-        data.count && data.count > 0 && data.height && data.height > 0 && data.width && data.width > 0,
-      );
+      return Boolean(data.mirror);
+    case "frame":
+      return Boolean(data.frame);
+    case "sandblast":
+      return true; // Optional step
+    case "mirrorComponents":
+      return Boolean(data.lightThread && data.thickness);
     case "schedule":
       return Boolean(data.startDate && data.endDate);
     case "review":

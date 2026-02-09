@@ -19,13 +19,13 @@ type WizardStepperProps = {
 
 export function WizardStepper({ steps, onStepClick }: WizardStepperProps) {
   return (
-    <ol className="grid gap-3 md:grid-cols-5">
+    <ol className="grid gap-3 md:grid-cols-5 items-stretch">
       {steps.map((step) => (
-        <li key={step.id}>
+        <li key={step.id} className="flex">
           <button
             type="button"
             className={cn(
-              "flex w-full flex-col gap-2 rounded-md border border-border px-4 py-3 text-left transition-colors",
+              "flex w-full h-full flex-col gap-2 rounded-md border border-border px-4 py-3 text-right transition-colors min-h-[100px]",
               step.status === "current" && "border-primary bg-primary/5",
               step.status === "complete" && "border-primary/60 bg-primary/10",
               step.status === "upcoming" && "hover:bg-layer-hover",
@@ -34,7 +34,7 @@ export function WizardStepper({ steps, onStepClick }: WizardStepperProps) {
           >
             <span
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                 step.status === "complete" && "bg-primary text-primary-foreground",
                 step.status === "current" && "bg-primary text-primary-foreground",
                 step.status === "upcoming" && "bg-layer-hover text-muted-foreground",
@@ -42,7 +42,7 @@ export function WizardStepper({ steps, onStepClick }: WizardStepperProps) {
             >
               {step.index + 1}
             </span>
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1">
               <span className="text-sm font-semibold text-foreground">
                 {step.title}
               </span>

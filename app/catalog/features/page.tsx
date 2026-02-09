@@ -1,6 +1,7 @@
  "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
@@ -18,28 +19,29 @@ import {
 } from "../../../components/ui/typography";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
 import { useFeatureModulesData } from "../../../hooks/catalog/useFeatureModulesData";
-import { Select } from "../../../components/ui/select";
+import { CustomSelect } from "../../../components/ui/custom-select";
 import { Input } from "../../../components/ui/input";
 import { EmptyState } from "../../../components/ui/empty-state";
-import { FeatureModuleModal } from "../../../components/catalog/modals/FeatureModuleModal";
+import { FeatureModuleDrawer } from "../../../components/catalog/FeatureModuleDrawer";
+import { toPersianNumber } from "../../../lib/utils/numbers";
 
 export default function CatalogFeaturesPage() {
   const { modules, createModule, updateModule } = useFeatureModulesData();
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   const selectedFeature = modules.find((feature) => feature.id === selectedFeatureId);
 
   const typeLabels: Record<string, string> = {
-    frame: "Frame",
-    lightThread: "Light Thread",
-    backLight: "Back Light",
-    zoom: "Zoom",
-    thickness: "Thickness",
-    sandblast: "Sandblast",
+    frame: "قاب",
+    lightThread: "نخ نوری",
+    backLight: "نور پس‌زمینه",
+    zoom: "زوم",
+    thickness: "ضخامت",
+    sandblast: "سندبلاست",
     lol: "LOL",
-    mirrorModule: "Mirror Module",
+    mirrorModule: "ماژول آینه",
   };
 
   const filteredModules = modules.filter((feature) => {
@@ -51,54 +53,45 @@ export default function CatalogFeaturesPage() {
   });
 
   return (
-    <section className="flex flex-1 flex-col gap-6">
+    <section className="flex flex-1 flex-col gap-6" dir="rtl">
       <div className="flex flex-col gap-2">
-        <SectionSubtitle>Catalog</SectionSubtitle>
-        <PageTitle>Feature Modules</PageTitle>
-        <BodyText className="max-w-2xl">
-          Maintain optional add-ons and their dependencies. Each item will map to
-          accounting data and dynamic pricing rules, so keep configuration
-          flexible.
-        </BodyText>
+        <PageTitle>ماژول‌های ویژگی</PageTitle>
       </div>
 
       <Card>
         <CardHeader>
-          <SectionTitle as="h3">Modules Inventory</SectionTitle>
-          <CardDescription>
-            Mirrors <code>{"GET /{module}"}</code> responses (frame, lightThread, backLight, etc.) combined into a single view.
-          </CardDescription>
+          <SectionTitle as="h3">فهرست ماژول‌ها</SectionTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Input
-              placeholder="Search feature module"
+              placeholder="جستجوی ماژول ویژگی"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="max-w-xs"
             />
-            <Select
+            <CustomSelect
               value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-              className="max-w-xs"
-            >
-              <option value="all">All types</option>
-              {Object.entries(typeLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </Select>
+              onChange={(value) => setTypeFilter(value)}
+              options={[
+                { value: "all", label: "همه انواع" },
+                ...Object.entries(typeLabels).map(([key, label]) => ({
+                  value: key,
+                  label: label,
+                })),
+              ]}
+              className="w-48"
+            />
             <BodyText className="text-xs">
-              Showing {filteredModules.length} of {modules.length} modules
+              نمایش {toPersianNumber(filteredModules.length)} از {toPersianNumber(modules.length)} ماژول
             </BodyText>
           </div>
 
           {filteredModules.length === 0 ? (
             <EmptyState
-              title="No feature modules found"
-              description="Try updating the type filter or clearing the search to see more records."
-              actionLabel="Reset filters"
+              title="ماژول ویژگی یافت نشد"
+              description="فیلتر نوع را تغییر دهید یا جستجو را پاک کنید تا رکوردهای بیشتری را ببینید."
+              actionLabel="بازنشانی فیلترها"
               onAction={() => {
                 setSearchTerm("");
                 setTypeFilter("all");
@@ -108,11 +101,11 @@ export default function CatalogFeaturesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Attributes</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>نام</TableHead>
+                <TableHead>نوع</TableHead>
+                <TableHead>ویژگی‌ها</TableHead>
+                <TableHead>به‌روزرسانی</TableHead>
+                <TableHead className="text-left">عملیات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -123,7 +116,7 @@ export default function CatalogFeaturesPage() {
                       <span className="font-medium text-foreground">
                         {feature.name}
                       </span>
-                      <MutedText>{feature.id}</MutedText>
+                      <MutedText className="text-xs">{feature.id}</MutedText>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -134,23 +127,25 @@ export default function CatalogFeaturesPage() {
                   <TableCell>
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                       {feature.layerCount && (
-                        <span>Layers: {feature.layerCount}</span>
+                        <span>لایه‌ها: {toPersianNumber(feature.layerCount)}</span>
                       )}
-                      {feature.code && <span>Code: {feature.code}</span>}
+                      {feature.code && <span>کد: {feature.code}</span>}
                       {!feature.layerCount && !feature.code && <span>—</span>}
                     </div>
                   </TableCell>
-                  <TableCell>{new Date(feature.updatedAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-xs">
+                    {new Date(feature.updatedAt).toLocaleDateString("fa-IR")}
+                  </TableCell>
+                  <TableCell className="text-left">
                     <Button
                       variant="subtle"
                       size="sm"
                       onClick={() => {
                         setSelectedFeatureId(feature.id);
-                        setModalMode("edit");
+                        setDrawerMode("edit");
                       }}
                     >
-                      Edit
+                      ویرایش
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -158,9 +153,6 @@ export default function CatalogFeaturesPage() {
             </TableBody>
           </Table>
           )}
-          <BodyText className="text-xs">
-            Each module maintains its own CRUD endpoint. When connecting to the backend, filter by type and hydrate this table accordingly.
-          </BodyText>
         </CardContent>
       </Card>
 
@@ -168,30 +160,32 @@ export default function CatalogFeaturesPage() {
         <Button
           onClick={() => {
             setSelectedFeatureId(null);
-            setModalMode("create");
+            setDrawerMode("create");
           }}
         >
-          Add Feature Module
+          افزودن ماژول ویژگی
         </Button>
-        <Button variant="subtle">Manage Dependencies</Button>
-        <Button variant="ghost">View Accounting Mapping</Button>
+        <Button variant="subtle">مدیریت وابستگی‌ها</Button>
+        <Button variant="ghost">مشاهده نگاشت حسابداری</Button>
       </div>
 
-      {modalMode && (
-        <FeatureModuleModal
-          mode={modalMode}
-          feature={modalMode === "edit" ? selectedFeature : undefined}
-          onClose={() => setModalMode(null)}
-          onSubmit={(payload) => {
-            if (modalMode === "create") {
-              createModule(payload);
-            } else if (modalMode === "edit" && selectedFeature) {
-              updateModule({ ...payload, id: selectedFeature.id });
-            }
-          }}
-          existingModules={modules}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {drawerMode && (
+          <FeatureModuleDrawer
+            mode={drawerMode}
+            feature={drawerMode === "edit" ? selectedFeature : undefined}
+            onClose={() => setDrawerMode(null)}
+            onSubmit={(payload) => {
+              if (drawerMode === "create") {
+                createModule(payload);
+              } else if (drawerMode === "edit" && selectedFeature) {
+                updateModule({ ...payload, id: selectedFeature.id });
+              }
+            }}
+            existingModules={modules}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

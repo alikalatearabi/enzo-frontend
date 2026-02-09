@@ -1,8 +1,10 @@
  "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "../../components/ui/button";
+import { formatPersianCurrency, toPersianNumber } from "../../lib/utils/numbers";
 import {
   Card,
   CardContent,
@@ -11,13 +13,13 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/table";
+  PolishedTable,
+  PolishedTableBody,
+  PolishedTableCell,
+  PolishedTableHead,
+  PolishedTableHeader,
+  PolishedTableRow,
+} from "../../components/ui/polished-table";
 import {
   BodyText,
   MutedText,
@@ -30,16 +32,19 @@ import { Select } from "../../components/ui/select";
 import { useToast } from "../../components/ui/feedback/ToastProvider";
 import { Input } from "../../components/ui/input";
 import { EmptyState } from "../../components/ui/empty-state";
+import { ConfirmDialog } from "../../components/ui/dialog";
+import { CustomSelect } from "../../components/ui/custom-select";
 
 const statusOptions = [
-  { value: "PROFORMA_INVOICE", label: "Proforma Invoice" },
-  { value: "ASSEMBLY", label: "Assembly" },
-  { value: "CUTTING", label: "Cutting" },
-  { value: "LEAVING_WAREHOUSE", label: "Leaving Warehouse" },
+  { value: "PROFORMA_INVOICE", label: "پیش‌فاکتور" },
+  { value: "ASSEMBLY", label: "مونتاژ" },
+  { value: "CUTTING", label: "برش" },
+  { value: "LEAVING_WAREHOUSE", label: "خروج از انبار" },
 ];
 
 export default function OrdersPage() {
-  const { orders, updateOrderStatus, statusCounts } = useOrdersData();
+  const router = useRouter();
+  const { orders, updateOrderStatus, deleteOrder, statusCounts } = useOrdersData();
   const statusLabel = statusOptions.reduce<Record<string, string>>(
     (acc, option) => {
       acc[option.value] = option.label;
@@ -49,6 +54,8 @@ export default function OrdersPage() {
   );
   const [statusFilter, setStatusFilter] = useState<"all" | keyof typeof statusLabel>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<{ id: string; workOrder: string } | null>(null);
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     const matchesSearch =
@@ -60,14 +67,9 @@ export default function OrdersPage() {
   const { addToast } = useToast();
 
   return (
-    <section className="flex flex-1 flex-col gap-6">
+    <section className="flex flex-1 flex-col gap-6" dir="rtl">
       <div className="flex flex-col gap-2">
-        <SectionSubtitle>Operations</SectionSubtitle>
-        <PageTitle>Orders</PageTitle>
-        <BodyText className="max-w-2xl">
-          Intake, track, and manage mirror production orders. The wizard flow will
-          live here, transitioning from mocked state to live API integration.
-        </BodyText>
+        <PageTitle>سفارش‌ها</PageTitle>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-4">
@@ -78,7 +80,7 @@ export default function OrdersPage() {
                 {statusLabel[status]}
               </span>
               <span className="text-2xl font-semibold text-foreground">
-                {count}
+                {toPersianNumber(count)}
               </span>
             </CardContent>
           </Card>
@@ -87,101 +89,152 @@ export default function OrdersPage() {
 
       <Card>
         <CardHeader>
-          <SectionTitle as="h3">Recent Orders</SectionTitle>
+          <SectionTitle as="h3">سفارش‌های اخیر</SectionTitle>
           <CardDescription>
-            Placeholder table to design around while we finalize the data model.
+            جدول نگهدارنده برای طراحی در حالی که مدل داده را نهایی می‌کنیم.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Input
-              placeholder="Search work order or customer"
+              placeholder="جستجوی سفارش کار یا مشتری"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="max-w-xs"
             />
-            <Select
+            <CustomSelect
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-              className="max-w-xs"
-            >
-              <option value="all">All statuses</option>
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+              onChange={(value) => setStatusFilter(value as typeof statusFilter)}
+              options={[
+                { value: "all", label: "همه وضعیت‌ها" },
+                ...statusOptions,
+              ]}
+              className="w-48"
+            />
             <BodyText className="text-xs">
-              Showing {filteredOrders.length} of {orders.length} orders
+              نمایش {toPersianNumber(filteredOrders.length)} از {toPersianNumber(orders.length)} سفارش
             </BodyText>
           </div>
 
           {filteredOrders.length === 0 ? (
             <EmptyState
-              title="No orders match your filters"
-              description="Adjust the status filter or clear the search term to view more orders."
-              actionLabel="Clear filters"
+              title="هیچ سفارشی با فیلترهای شما مطابقت ندارد"
+              description="فیلتر وضعیت را تنظیم کنید یا عبارت جستجو را پاک کنید تا سفارش‌های بیشتری را مشاهده کنید."
+              actionLabel="پاک کردن فیلترها"
               onAction={() => {
                 setSearchTerm("");
                 setStatusFilter("all");
               }}
             />
           ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Assigned</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
+          <PolishedTable>
+            <PolishedTableHeader>
+              <PolishedTableHead>شناسه</PolishedTableHead>
+              <PolishedTableHead>مشتری</PolishedTableHead>
+              <PolishedTableHead>اختصاص داده شده</PolishedTableHead>
+              <PolishedTableHead>وضعیت</PolishedTableHead>
+              <PolishedTableHead>مجموع</PolishedTableHead>
+              <PolishedTableHead align="center">عملیات</PolishedTableHead>
+            </PolishedTableHeader>
+            <PolishedTableBody>
+              {filteredOrders.map((order, index) => (
+                <PolishedTableRow key={order.id}>
+                  <PolishedTableCell>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-foreground">
                         {order.workOrder}
                       </span>
-                      <MutedText>{order.mirrorName}</MutedText>
+                      <MutedText className="text-xs">{order.mirrorName}</MutedText>
                     </div>
-                  </TableCell>
-                  <TableCell>{order.customerName}</TableCell>
-                  <TableCell>{order.cutterName}</TableCell>
-                  <TableCell>
-                    <Select
+                  </PolishedTableCell>
+                  <PolishedTableCell>
+                    <span className="font-medium text-foreground">
+                      {order.customerName}
+                    </span>
+                  </PolishedTableCell>
+                  <PolishedTableCell>
+                    <span className="text-muted-foreground">
+                      {order.cutterName}
+                    </span>
+                  </PolishedTableCell>
+                  <PolishedTableCell>
+                    <CustomSelect
                       value={order.status}
-                      onChange={(event) => {
-                        const newStatus = event.target.value as typeof order.status;
+                      onChange={(newStatus) => {
                         updateOrderStatus({
                           orderId: order.id,
-                          status: newStatus,
+                          status: newStatus as typeof order.status,
                         });
                         addToast({
-                          title: "Status updated",
-                          description: `Order ${order.workOrder} set to ${statusLabel[newStatus]}.`,
+                          title: "وضعیت به‌روزرسانی شد",
+                          description: `سفارش ${order.workOrder} به ${statusLabel[newStatus]} تنظیم شد.`,
                           variant: "success",
                         });
                       }}
-                      className="max-w-xs"
-                    >
-                      {statusOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {order.price > 0 ? `$${order.price.toLocaleString()}` : "—"}
-                  </TableCell>
-                </TableRow>
+                      options={statusOptions}
+                      className="w-40"
+                    />
+                  </PolishedTableCell>
+                  <PolishedTableCell>
+                    <span className="font-semibold text-foreground">
+                      {formatPersianCurrency(order.price)}
+                    </span>
+                  </PolishedTableCell>
+                  <PolishedTableCell align="center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          router.push(`/orders/wizard?id=${order.id}`);
+                        }}
+                        className="h-9 w-9 p-0 rounded-md hover:bg-primary/10 transition-colors"
+                        title="ویرایش سفارش"
+                      >
+                        <svg
+                          className="h-4 w-4 text-primary"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setOrderToDelete({ id: order.id, workOrder: order.workOrder });
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="h-9 w-9 p-0 rounded-md hover:bg-red-500/10 transition-colors"
+                        title="حذف سفارش"
+                      >
+                        <svg
+                          className="h-4 w-4 text-red-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </Button>
+                    </div>
+                  </PolishedTableCell>
+                </PolishedTableRow>
               ))}
-            </TableBody>
-          </Table>
+            </PolishedTableBody>
+          </PolishedTable>
           )}
         </CardContent>
       </Card>
@@ -189,13 +242,39 @@ export default function OrdersPage() {
       <div className="flex flex-wrap gap-3">
         <Link
           href="/orders/wizard"
-          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium shadow-sm transition-colors hover:bg-primary/90"
+          style={{ color: 'var(--primary-foreground)' }}
         >
-          New Order Wizard
+          ثبت سفارش جدید
         </Link>
-        <Button variant="secondary">Assign Operator</Button>
-        <Button variant="ghost">View Workflow Settings</Button>
       </div>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setOrderToDelete(null);
+        }}
+        onConfirm={() => {
+          if (orderToDelete) {
+            deleteOrder(orderToDelete.id);
+            addToast({
+              title: "سفارش حذف شد",
+              description: `سفارش ${orderToDelete.workOrder} با موفقیت حذف شد.`,
+              variant: "success",
+            });
+          }
+        }}
+        title="حذف سفارش"
+        description={
+          orderToDelete
+            ? `آیا از حذف سفارش ${orderToDelete.workOrder} اطمینان دارید؟ این عمل قابل بازگشت نیست.`
+            : ""
+        }
+        confirmLabel="حذف"
+        cancelLabel="لغو"
+        variant="destructive"
+      />
     </section>
   );
 }

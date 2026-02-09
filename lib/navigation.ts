@@ -1,20 +1,20 @@
 export const NAV_SECTIONS = [
   {
-    label: "Catalog",
+    label: "کاتالوگ",
     items: [
-      { label: "Mirrors", href: "/catalog/mirrors" },
-      { label: "Shapes", href: "/catalog/shapes" },
-      { label: "Feature Modules", href: "/catalog/features" },
-      { label: "Accounting Tables", href: "/catalog/accounting" },
+      { label: "آینه‌ها", href: "/catalog/mirrors" },
+      { label: "اشکال", href: "/catalog/shapes" },
+      { label: "ماژول‌های ویژگی", href: "/catalog/features" },
+      { label: "جداول حسابداری", href: "/catalog/accounting" },
     ],
   },
   {
-    label: "Operations",
+    label: "عملیات",
     items: [
-      { label: "Orders", href: "/orders" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "Tools & Reporting", href: "/tools" },
-      { label: "Media Gallery", href: "/media" },
+      { label: "سفارش‌ها", href: "/orders" },
+      { label: "قیمت‌گذاری", href: "/pricing" },
+      { label: "ابزارها و گزارش‌گیری", href: "/tools" },
+      { label: "گالری رسانه", href: "/media" },
     ],
   },
 ] as const;

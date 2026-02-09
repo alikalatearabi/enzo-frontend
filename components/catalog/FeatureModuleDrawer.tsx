@@ -1,16 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { FeatureModule } from "../../../lib/mocks/features";
-import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
-import { CustomSelect } from "../../ui/custom-select";
-import { Textarea } from "../../ui/textarea";
-import { BodyText, SectionTitle } from "../../ui/typography";
-import { useToast } from "../../ui/feedback/ToastProvider";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { FeatureModule } from "../../lib/mocks/features";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { CustomSelect } from "../ui/custom-select";
+import { Textarea } from "../ui/textarea";
+import { BodyText, SectionTitle } from "../ui/typography";
+import { useToast } from "../ui/feedback/ToastProvider";
 
-type FeatureModuleModalProps = {
+type FeatureModuleDrawerProps = {
   mode: "create" | "edit";
   feature?: FeatureModule;
   onClose: () => void;
@@ -35,20 +36,31 @@ const typeOptions = [
   { value: "mirrorModule", label: "ماژول آینه" },
 ];
 
-export function FeatureModuleModal({
+export function FeatureModuleDrawer({
   mode,
   feature,
   onClose,
   onSubmit,
   existingModules,
-}: FeatureModuleModalProps) {
+}: FeatureModuleDrawerProps) {
   const { addToast } = useToast();
   const [name, setName] = useState(feature?.name ?? "");
   const [type, setType] = useState(feature?.type ?? "frame");
   const [code, setCode] = useState(feature?.code ?? "");
   const [layerCount, setLayerCount] = useState(feature?.layerCount ?? 1);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(feature?.notes ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (feature) {
+      setName(feature.name);
+      setType(feature.type);
+      setCode(feature.code ?? "");
+      setLayerCount(feature.layerCount ?? 1);
+      setNotes(feature.notes ?? "");
+      setErrors({});
+    }
+  }, [feature]);
 
   const clearFieldError = (field: string) => {
     setErrors((prev) => {
@@ -66,7 +78,7 @@ export function FeatureModuleModal({
       feature.type !== type ||
       (feature.code ?? "") !== code ||
       (feature.layerCount ?? 1) !== layerCount ||
-      notes.trim().length > 0
+      (feature.notes ?? "") !== notes
     );
   }, [feature, name, type, code, layerCount, notes]);
 
@@ -120,14 +132,29 @@ export function FeatureModuleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4" dir="rtl">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-layer p-6 shadow-xl">
-        <div className="flex items-start justify-between gap-3">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-40 flex items-stretch justify-start bg-black/40"
+      dir="rtl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="flex h-full w-full max-w-xl flex-col gap-6 overflow-y-auto bg-layer p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <SectionTitle as="h3">
               {mode === "create" ? "افزودن ماژول ویژگی" : "ویرایش ماژول ویژگی"}
             </SectionTitle>
-            <BodyText className="text-sm">
+            <BodyText>
               نمایانگر payload برای DTO خاص ماژول (مثلاً POST /frames).
             </BodyText>
           </div>
@@ -136,7 +163,7 @@ export function FeatureModuleModal({
           </Button>
         </div>
 
-        <div className="mt-4 grid gap-4">
+        <div className="grid gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="feature-name" requiredMarker>
               نام
@@ -220,7 +247,7 @@ export function FeatureModuleModal({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-start gap-3 border-t border-border pt-4">
+        <div className="flex justify-start gap-3 border-t border-border pt-4">
           <Button variant="ghost" onClick={onClose}>
             لغو
           </Button>
@@ -232,8 +259,10 @@ export function FeatureModuleModal({
             {mode === "create" ? "ایجاد ماژول ویژگی" : "ذخیره تغییرات"}
           </Button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
+
+
 

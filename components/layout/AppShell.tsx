@@ -19,25 +19,25 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   return (
-    <div className="flex min-h-screen bg-surface text-foreground">
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-layer md:flex md:flex-col">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+    <div className="flex h-screen overflow-hidden bg-surface text-foreground">
+      <aside className="hidden w-72 shrink-0 border-l border-border bg-layer md:flex md:flex-col shadow-sm" dir="rtl">
+        <div className="flex h-20 shrink-0 items-center gap-3 border-b border-border px-6">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-base font-bold text-primary-foreground shadow-sm">
             EZ
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold leading-tight">
-              Enzo Mirrors
+            <span className="text-base font-bold leading-tight text-foreground">
+              آینه‌های انزو
             </span>
-            <span className="text-xs text-muted-foreground">
-              Production Console
+            <span className="text-xs text-muted-foreground mt-0.5">
+              کنسول تولید
             </span>
           </div>
         </div>
-        <nav className="flex flex-1 flex-col gap-6 px-3 py-4 text-sm">
+        <nav className="flex flex-1 flex-col gap-8 px-4 py-6 overflow-y-auto">
           {NAV_SECTIONS.map((section) => (
-            <div key={section.label} className="flex flex-col gap-2">
-              <span className="px-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <div key={section.label} className="flex flex-col gap-3">
+              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                 {section.label}
               </span>
               <div className="flex flex-col gap-1">
@@ -46,35 +46,71 @@ export function AppShell({ children }: AppShellProps) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground",
-                      isActive(item.href) &&
-                        "bg-layer-hover text-foreground shadow-sm",
+                      "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                      "text-muted-foreground hover:bg-layer-hover hover:text-foreground",
+                      isActive(item.href)
+                        ? "bg-primary/10 text-foreground shadow-sm"
+                        : "",
                     )}
                   >
-                    {item.label}
+                    {isActive(item.href) && (
+                      <span className="absolute right-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-l-full bg-primary" />
+                    )}
+                    <span className="flex-1">{item.label}</span>
                   </Link>
                 ))}
               </div>
             </div>
           ))}
         </nav>
-        <div className="flex flex-col gap-1 border-t border-border px-6 py-4 text-xs text-muted-foreground">
-          <span>Plant status: Nominal</span>
-          <span>MinIO: Connected</span>
+        <div className="shrink-0 border-t border-border bg-layer-hover/50 px-6 py-4">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">وضعیت کارخانه</span>
+              <span className="flex items-center gap-1.5 font-medium text-foreground">
+                <span className="h-2 w-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
+                عادی
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">MinIO</span>
+              <span className="flex items-center gap-1.5 font-medium text-foreground">
+                <span className="h-2 w-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
+                متصل
+              </span>
+            </div>
+          </div>
         </div>
       </aside>
-      <div className="flex min-h-screen flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border bg-layer px-6">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-20 shrink-0 items-center justify-between border-b border-border bg-layer/80 backdrop-blur-sm px-6">
           <div className="md:hidden">
-            <span className="text-sm font-semibold">Enzo Mirrors</span>
+            <span className="text-sm font-bold text-foreground">آینه‌های انزو</span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4" style={{ direction: "ltr" }}>
             <ThemeToggle />
-            <span>Logged out</span>
-            <div className="h-8 w-8 rounded-full bg-layer-hover" />
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              <span>خروج از سیستم</span>
+            </button>
           </div>
         </header>
-        <main className="flex flex-1 flex-col bg-surface px-6 py-8">
+        <main className="flex flex-1 flex-col overflow-y-auto bg-surface px-6 py-8">
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
             {children}
           </div>

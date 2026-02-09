@@ -5,13 +5,21 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Select } from "../../components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { CustomSelect } from "../../components/ui/custom-select";
+import {
+  PolishedTable,
+  PolishedTableBody,
+  PolishedTableCell,
+  PolishedTableHead,
+  PolishedTableHeader,
+  PolishedTableRow,
+} from "../../components/ui/polished-table";
 import { BodyText, MutedText, PageTitle, SectionSubtitle, SectionTitle } from "../../components/ui/typography";
 import { useMockAccounting } from "../../lib/mocks/accounting";
 import { useMockOrders } from "../../lib/mocks/orders";
 import { useMockPricingRuns } from "../../lib/mocks/pricing";
 import { useToast } from "../../components/ui/feedback/ToastProvider";
+import { formatPersianCurrency, toPersianNumber } from "../../lib/utils/numbers";
 
 export default function PricingPage() {
   const { addToast } = useToast();
@@ -38,10 +46,10 @@ export default function PricingPage() {
     setTimeout(() => {
       setIsRunning(false);
       if (!mockRun) {
-        setErrorMessage("Unable to locate pricing run for the selected order and accounting sheet.");
+        setErrorMessage("نمی‌توان اجرای قیمت‌گذاری را برای سفارش و ورقه حسابداری انتخاب شده پیدا کرد.");
         addToast({
-          title: "Pricing queued",
-          description: "No mock breakdown found, waiting for backend response.",
+          title: "قیمت‌گذاری در صف",
+          description: "جزئیات شبیه‌سازی شده یافت نشد، در انتظار پاسخ بک‌اند.",
           variant: "error",
         });
         return;
@@ -57,10 +65,10 @@ export default function PricingPage() {
           prev.map((run) => (run.id === mockRun.id ? failedRun : run)),
         );
         setSelectedRun(failedRun);
-        setErrorMessage("Pricing engine returned an error. Please review accounting inputs or retry later.");
+        setErrorMessage("موتور قیمت‌گذاری خطا برگرداند. لطفاً ورودی‌های حسابداری را بررسی کنید یا بعداً دوباره تلاش کنید.");
         addToast({
-          title: "Pricing failed",
-          description: "Simulated failure to test error handling.",
+          title: "قیمت‌گذاری ناموفق",
+          description: "شکست شبیه‌سازی شده برای تست مدیریت خطا.",
           variant: "error",
         });
         return;
@@ -77,68 +85,58 @@ export default function PricingPage() {
       setSelectedRun(completedRun);
       setErrorMessage(null);
       addToast({
-        title: "Pricing complete",
-        description: `Order ${mockRun.orderId} updated with total $${mockRun.total.toLocaleString()}`,
+        title: "قیمت‌گذاری تکمیل شد",
+        description: `سفارش ${mockRun.orderId} با مجموع ${formatPersianCurrency(mockRun.total)} به‌روزرسانی شد.`,
         variant: "success",
       });
     }, 1200);
   };
 
   return (
-    <section className="flex flex-1 flex-col gap-6">
+    <section className="flex flex-1 flex-col gap-6" dir="rtl">
       <div className="flex flex-col gap-2">
-        <SectionSubtitle>Operations</SectionSubtitle>
-        <PageTitle>Pricing Console</PageTitle>
-        <BodyText className="max-w-2xl">
-          Trigger pricing runs, inspect accounting breakdowns, and adjust order statuses.
-          This view will pull from accounting tables and order metadata.
-        </BodyText>
+        <PageTitle>کنسول قیمت‌گذاری</PageTitle>
       </div>
 
       <Card>
         <CardHeader>
-          <SectionTitle as="h3">Pricing Run</SectionTitle>
+          <SectionTitle as="h3">اجرای قیمت‌گذاری</SectionTitle>
           <CardDescription>
-            Mocked controls that will connect to pricing endpoints once available.
+            کنترل‌های شبیه‌سازی شده که پس از آماده شدن به نقاط پایانی قیمت‌گذاری متصل می‌شوند.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="pricing-order" requiredMarker>
-                Order ID
+                شناسه سفارش
               </Label>
-              <Select
-                id="pricing-order"
+              <CustomSelect
                 value={selectedOrderId}
-                onChange={(event) => setSelectedOrderId(event.target.value)}
-              >
-                <option value="" disabled>
-                  Select order
-                </option>
-                {orders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {order.workOrder} – {order.customerName}
-                  </option>
-                ))}
-              </Select>
+                onChange={(value) => setSelectedOrderId(value)}
+                options={[
+                  { value: "", label: "انتخاب سفارش" },
+                  ...orders.map((order) => ({
+                    value: order.id,
+                    label: `${order.workOrder} – ${order.customerName}`,
+                  })),
+                ]}
+                placeholder="انتخاب سفارش"
+              />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="pricing-sheet">Accounting Sheet</Label>
-              <Select
-                id="pricing-sheet"
+              <Label htmlFor="pricing-sheet">ورقه حسابداری</Label>
+              <CustomSelect
                 value={selectedSheetId}
-                onChange={(event) => setSelectedSheetId(event.target.value)}
-              >
-                {sheets.map((sheet) => (
-                  <option key={sheet.id} value={sheet.id}>
-                    {sheet.name}
-                  </option>
-                ))}
-              </Select>
+                onChange={(value) => setSelectedSheetId(value)}
+                options={sheets.map((sheet) => ({
+                  value: sheet.id,
+                  label: sheet.name,
+                }))}
+              />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="pricing-operator">Operator</Label>
+              <Label htmlFor="pricing-operator">اپراتور</Label>
               <Input
                 id="pricing-operator"
                 placeholder="alex.romeo"
@@ -153,18 +151,18 @@ export default function PricingPage() {
               onClick={handleRunPricing}
               isLoading={isRunning}
             >
-              Run Pricing
+              اجرای قیمت‌گذاری
             </Button>
             <Button
               variant="secondary"
               onClick={() =>
                 addToast({
-                  title: "Preview requested",
-                  description: "Would invoke backend preview endpoint when available.",
+                  title: "درخواست پیش‌نمایش",
+                  description: "پس از آماده شدن، نقطه پایانی پیش‌نمایش بک‌اند فراخوانی می‌شود.",
                 })
               }
             >
-              Preview Breakdown
+              پیش‌نمایش جزئیات
             </Button>
             <Button
               variant="ghost"
@@ -177,7 +175,7 @@ export default function PricingPage() {
                 setErrorMessage(null);
               }}
             >
-              Reset
+              بازنشانی
             </Button>
           </div>
         </CardContent>
@@ -185,9 +183,9 @@ export default function PricingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Breakdown Preview</CardTitle>
+          <CardTitle>پیش‌نمایش جزئیات</CardTitle>
           <CardDescription>
-            Displays how base price and feature modules contribute to the final total.
+            نمایش نحوه مشارکت قیمت پایه و ماژول‌های ویژگی در مجموع نهایی.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -199,10 +197,10 @@ export default function PricingPage() {
                 size="sm"
                 onClick={() => setSelectedRun(run)}
               >
-                {new Date(run.startedAt).toLocaleDateString()} · {run.accountingSheetName}
+                {new Date(run.startedAt).toLocaleDateString("fa-IR")} · {run.accountingSheetName}
                 {run.status !== "complete" && (
                   <span className="ml-2 text-xs uppercase">
-                    {run.status === "pending" ? "Pending" : "Failed"}
+                    {run.status === "pending" ? "در انتظار" : "ناموفق"}
                   </span>
                 )}
               </Button>
@@ -215,49 +213,47 @@ export default function PricingPage() {
             </div>
           )}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Component</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <PolishedTable>
+            <PolishedTableHeader>
+              <PolishedTableHead>مؤلفه</PolishedTableHead>
+              <PolishedTableHead>مرجع</PolishedTableHead>
+              <PolishedTableHead>مبلغ</PolishedTableHead>
+            </PolishedTableHeader>
+            <PolishedTableBody>
               {selectedRun?.breakdown.map((item) => (
-                <TableRow key={`${selectedRun.id}-${item.component}`}>
-                  <TableCell>{item.component}</TableCell>
-                  <TableCell>{item.sheet}</TableCell>
-                  <TableCell className="text-right">
-                    ${item.amount.toLocaleString()}
-                  </TableCell>
-                </TableRow>
+                <PolishedTableRow key={`${selectedRun.id}-${item.component}`}>
+                  <PolishedTableCell>{item.component}</PolishedTableCell>
+                  <PolishedTableCell>{item.sheet}</PolishedTableCell>
+                  <PolishedTableCell>
+                    {formatPersianCurrency(item.amount)}
+                  </PolishedTableCell>
+                </PolishedTableRow>
               ))}
-            </TableBody>
-          </Table>
+            </PolishedTableBody>
+          </PolishedTable>
           {selectedRun?.breakdown.length === 0 && (
             <BodyText className="text-xs text-muted-foreground">
-              No pricing components recorded for this run. Review accounting data or retry the calculation.
+              هیچ مؤلفه قیمت‌گذاری برای این اجرا ثبت نشده است. داده‌های حسابداری را بررسی کنید یا محاسبه را دوباره امتحان کنید.
             </BodyText>
           )}
           <div className="flex items-center justify-between rounded-md border border-border bg-layer px-4 py-3 text-sm text-foreground">
-            <span className="font-medium">Proposed total</span>
+            <span className="font-medium">مجموع پیشنهادی</span>
             <span className="text-lg font-semibold">
               {selectedRun
-                ? `$${selectedRun.total.toLocaleString()}`
-                : "$0.00"}
+                ? formatPersianCurrency(selectedRun.total)
+                : formatPersianCurrency(0)}
             </span>
           </div>
           {selectedRun && (
             <MutedText className="text-xs">
-              Status: {selectedRun.status === "complete" ? "Complete" : selectedRun.status === "pending" ? "Pending" : "Failed"}{" "}
+              وضعیت: {selectedRun.status === "complete" ? "تکمیل شده" : selectedRun.status === "pending" ? "در انتظار" : "ناموفق"}{" "}
               {selectedRun.finishedAt
-                ? ` · Finished at ${new Date(selectedRun.finishedAt).toLocaleTimeString()}`
+                ? ` · پایان یافته در ${new Date(selectedRun.finishedAt).toLocaleTimeString("fa-IR")}`
                 : ""}
             </MutedText>
           )}
           <MutedText className="text-xs">
-            Integrate with `PATCH /orders/:workOrderId/compute-price-codding/:accountingId` and use the response totals once backend wiring is ready.
+            با `PATCH /orders/:workOrderId/compute-price-codding/:accountingId` ادغام کنید و پس از آماده شدن سیم‌کشی بک‌اند از مجموع‌های پاسخ استفاده کنید.
           </MutedText>
         </CardContent>
       </Card>

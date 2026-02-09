@@ -1,37 +1,39 @@
  "use client";
 
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "../../../components/ui/card";
 import {
   BodyText,
   MutedText,
   PageTitle,
-  SectionSubtitle,
   SectionTitle,
 } from "../../../components/ui/typography";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../../components/ui/table";
+  PolishedTable,
+  PolishedTableBody,
+  PolishedTableCell,
+  PolishedTableHead,
+  PolishedTableHeader,
+  PolishedTableRow,
+} from "../../../components/ui/polished-table";
 import { Input } from "../../../components/ui/input";
-import { Select } from "../../../components/ui/select";
+import { CustomSelect } from "../../../components/ui/custom-select";
+import { formatPersianCurrency, toPersianNumber } from "../../../lib/utils/numbers";
 import { useMockMirrors } from "../../../lib/mocks/mirrors";
 import { useMockShapes } from "../../../lib/mocks/shapes";
 import { useMockFeatureModules } from "../../../lib/mocks/features";
 import { MirrorDrawer } from "../../../components/catalog/MirrorDrawer";
 import { useMirrorFilters } from "../../../hooks/catalog/useMirrorFilters";
+import { MediaUploadModal } from "../../../components/media/MediaUploadModal";
+import { useMediaUploads } from "../../../hooks/media/useMediaUploads";
+import { MediaAsset } from "../../../lib/mocks/media";
 
 export default function CatalogMirrorsPage() {
   const { data: mirrors } = useMockMirrors();
@@ -46,117 +48,133 @@ export default function CatalogMirrorsPage() {
   } = useMirrorFilters(mirrors);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
   const [selectedMirrorId, setSelectedMirrorId] = useState<string | null>(null);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const { addAsset } = useMediaUploads();
   const selectedMirror = mirrors.find((mirror) => mirror.id === selectedMirrorId);
 
   const findShape = (shapeId: string) =>
-    shapes.find((shape) => shape.id === shapeId)?.name ?? "Unknown";
+    shapes.find((shape) => shape.id === shapeId)?.name ?? "نامشخص";
 
   const findFeature = (featureId: string | undefined) =>
     featureModules.find((feature) => feature.id === featureId)?.name ?? "—";
 
+  const handleMediaUpload = (asset: MediaAsset) => {
+    addAsset(asset);
+  };
+
   return (
-    <section className="flex flex-1 flex-col gap-6">
+    <section className="flex flex-1 flex-col gap-6" dir="rtl">
       <div className="flex flex-col gap-2">
-        <SectionSubtitle>Catalog</SectionSubtitle>
-        <PageTitle>Mirrors</PageTitle>
-        <BodyText className="max-w-2xl">
-          Manage mirror templates, base configurations, and default dimensions.
-          Start by defining hero content and feature availability. Data is mocked
-          until API endpoints are connected.
-        </BodyText>
+        <PageTitle>آینه‌ها</PageTitle>
       </div>
 
       <Card>
         <CardHeader>
-          <SectionTitle as="h3">Mirror Catalog</SectionTitle>
-          <CardDescription>
-            Mirrors returned from `GET /mirrors` with populated shape and media URL.
-          </CardDescription>
+          <SectionTitle as="h3">کاتالوگ آینه</SectionTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <Input
-              placeholder="Search by name or shape"
+              placeholder="جستجو بر اساس نام یا شکل"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="max-w-xs"
             />
-            <Select
+            <CustomSelect
               value={shapeFilter}
-              onChange={(event) => setShapeFilter(event.target.value as "all" | string)}
-              className="max-w-xs"
-            >
-              <option value="all">All shapes</option>
-              {shapes.map((shape) => (
-                <option key={shape.id} value={shape.id}>
-                  {shape.name}
-                </option>
-              ))}
-            </Select>
+              onChange={(value) => setShapeFilter(value as "all" | string)}
+              options={[
+                { value: "all", label: "همه اشکال" },
+                ...shapes.map((shape) => ({
+                  value: shape.id,
+                  label: shape.name,
+                })),
+              ]}
+              className="w-48"
+            />
             <BodyText className="text-xs">
-              Showing {filteredMirrors.length} of {mirrors.length} templates
+              نمایش {toPersianNumber(filteredMirrors.length)} از {toPersianNumber(mirrors.length)} قالب
             </BodyText>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mirror</TableHead>
-                <TableHead>Shape</TableHead>
-                <TableHead>Dimensions</TableHead>
-                <TableHead>Features</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <PolishedTable>
+            <PolishedTableHeader>
+              <PolishedTableHead>آینه</PolishedTableHead>
+              <PolishedTableHead>شکل</PolishedTableHead>
+              <PolishedTableHead>ابعاد</PolishedTableHead>
+              <PolishedTableHead>ویژگی‌ها</PolishedTableHead>
+              <PolishedTableHead>قیمت</PolishedTableHead>
+              <PolishedTableHead align="center">عملیات</PolishedTableHead>
+            </PolishedTableHeader>
+            <PolishedTableBody>
               {filteredMirrors.map((mirror) => (
-                <TableRow key={mirror.id}>
-                  <TableCell>
+                <PolishedTableRow key={mirror.id}>
+                  <PolishedTableCell>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-layer-hover">
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-layer-hover to-layer">
                         {mirror.picture ? (
                           <Image
                             src={mirror.picture.url}
                             alt={mirror.name}
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 object-contain"
+                            width={48}
+                            height={48}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const placeholder = target.nextElementSibling as HTMLElement;
+                              if (placeholder) placeholder.style.display = "flex";
+                            }}
                           />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            No photo
-                          </span>
-                        )}
+                        ) : null}
+                        <div
+                          className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-layer-hover/90 to-layer-hover/70 ${
+                            mirror.picture ? "hidden" : "flex"
+                          }`}
+                        >
+                          <svg
+                            className="h-5 w-5 text-muted-foreground/60"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-foreground truncate">
                           {mirror.name}
                         </span>
-                        <MutedText>{mirror.id}</MutedText>
+                        <MutedText className="text-xs truncate">{mirror.id}</MutedText>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>{findShape(mirror.shape)}</TableCell>
-                  <TableCell>
-                    {mirror.defaultHeight} x {mirror.defaultWidth} cm
-                  </TableCell>
-                  <TableCell>
+                  </PolishedTableCell>
+                  <PolishedTableCell>{findShape(mirror.shape)}</PolishedTableCell>
+                  <PolishedTableCell>
+                    {toPersianNumber(mirror.defaultHeight)} × {toPersianNumber(mirror.defaultWidth)} سانتی‌متر
+                  </PolishedTableCell>
+                  <PolishedTableCell>
                     <div className="flex flex-wrap gap-2">
                       <span className="rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                        Frame: {findFeature(mirror.features.frame)}
+                        قاب: {findFeature(mirror.features.frame)}
                       </span>
                       <span className="rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                        Light: {findFeature(mirror.features.lightThread)}
+                        نور: {findFeature(mirror.features.lightThread)}
                       </span>
                       <span className="rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                        Back Light: {findFeature(mirror.features.backLight)}
+                        نور پس‌زمینه: {findFeature(mirror.features.backLight)}
                       </span>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {mirror.price ? `$${mirror.price.toLocaleString()}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </PolishedTableCell>
+                  <PolishedTableCell>
+                    {mirror.price ? formatPersianCurrency(mirror.price) : "—"}
+                  </PolishedTableCell>
+                  <PolishedTableCell align="center">
                     <Button
                       variant="subtle"
                       size="sm"
@@ -165,16 +183,13 @@ export default function CatalogMirrorsPage() {
                         setDrawerMode("edit");
                       }}
                     >
-                      Edit
+                      ویرایش
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </PolishedTableCell>
+                </PolishedTableRow>
               ))}
-            </TableBody>
-          </Table>
-          <BodyText className="text-xs">
-            When connected to the backend, replace this mock with data from `GET /mirrors`.
-          </BodyText>
+            </PolishedTableBody>
+          </PolishedTable>
         </CardContent>
       </Card>
 
@@ -186,19 +201,34 @@ export default function CatalogMirrorsPage() {
             setDrawerMode("create");
           }}
         >
-          Add Mirror Template
+          افزودن قالب آینه
         </Button>
-        <Button variant="secondary">Upload Media</Button>
-        <Button variant="ghost">Manage Shapes</Button>
+        <Button 
+          variant="secondary"
+          onClick={() => setIsMediaModalOpen(true)}
+        >
+          آپلود رسانه
+        </Button>
       </div>
 
-      {drawerMode && (
-        <MirrorDrawer
-          mode={drawerMode}
-          mirror={drawerMode === "edit" ? selectedMirror : undefined}
-          onClose={() => setDrawerMode(null)}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {drawerMode && (
+          <MirrorDrawer
+            mode={drawerMode}
+            mirror={drawerMode === "edit" ? selectedMirror : undefined}
+            onClose={() => setDrawerMode(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isMediaModalOpen && (
+          <MediaUploadModal
+            onClose={() => setIsMediaModalOpen(false)}
+            onUpload={handleMediaUpload}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

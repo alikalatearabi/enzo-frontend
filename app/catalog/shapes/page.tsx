@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
@@ -15,40 +19,36 @@ import {
 } from "../../../components/ui/typography";
 import { useMockShapes } from "../../../lib/mocks/shapes";
 import { useMockFeatureModules } from "../../../lib/mocks/features";
+import { toPersianNumber } from "../../../lib/utils/numbers";
+import { ShapeDrawer } from "../../../components/catalog/ShapeDrawer";
 
 export default function CatalogShapesPage() {
   const { data: shapes } = useMockShapes();
   const { data: features } = useMockFeatureModules();
+  const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const selectedShape = shapes.find((shape) => shape.id === selectedShapeId);
 
   const getThickness = (thicknessId: string) =>
     features.find(
       (feature) => feature.id === thicknessId && feature.type === "thickness",
-    )?.name ?? "Unknown";
+    )?.name ?? "نامشخص";
 
   return (
-    <section className="flex flex-1 flex-col gap-6">
+    <section className="flex flex-1 flex-col gap-6" dir="rtl">
       <div className="flex flex-col gap-2">
-        <SectionSubtitle>Catalog</SectionSubtitle>
-        <PageTitle>Shapes</PageTitle>
-        <BodyText className="max-w-2xl">
-          Define the geometry options available for mirrors. Shapes drive both
-          visualization and dimensional validation in the order intake wizard.
-        </BodyText>
+        <PageTitle>اشکال</PageTitle>
       </div>
 
       <Card>
         <CardHeader>
-          <SectionTitle as="h3">Shape Library</SectionTitle>
-          <CardDescription>
-            Mock response aligned with `GET /shapes`, including custom fields like
-            `deformed` and recommended thickness.
-          </CardDescription>
+          <SectionTitle as="h3">کاتالوگ اشکال</SectionTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           {shapes.map((shape) => (
             <div
               key={shape.id}
-              className="flex flex-col gap-3 rounded-md border border-border bg-layer p-4"
+              className="flex flex-col gap-3 rounded-lg border border-border bg-layer p-4 transition-all hover:shadow-md"
             >
               <div className="flex h-32 items-center justify-center rounded-md border border-dashed border-border bg-surface">
                 <span className="text-sm font-semibold text-muted-foreground">
@@ -57,13 +57,13 @@ export default function CatalogShapesPage() {
               </div>
               <div className="flex flex-col gap-1 text-sm">
                 <span className="font-semibold text-foreground">{shape.name}</span>
-                <MutedText>ID: {shape.id}</MutedText>
-                <MutedText>Aspect: {shape.aspectRatio}</MutedText>
-                <MutedText>
-                  Thickness: {getThickness(shape.recommendedThickness)}
+                <MutedText className="text-xs">شناسه: {shape.id}</MutedText>
+                <MutedText className="text-xs">نسبت: {shape.aspectRatio}</MutedText>
+                <MutedText className="text-xs">
+                  ضخامت: {getThickness(shape.recommendedThickness)}
                 </MutedText>
                 <span className="inline-flex w-fit items-center rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                  {shape.deformed ? "Deformed" : "Standard"}
+                  {shape.deformed ? "بدشکل" : "استاندارد"}
                 </span>
               </div>
             </div>
@@ -72,9 +72,26 @@ export default function CatalogShapesPage() {
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <Button variant="secondary">Add Shape</Button>
-        <Button variant="ghost">Import Shapes</Button>
+        <Button 
+          variant="secondary"
+          onClick={() => {
+            setSelectedShapeId(null);
+            setDrawerMode("create");
+          }}
+        >
+          افزودن شکل
+        </Button>
       </div>
+
+      <AnimatePresence mode="wait">
+        {drawerMode && (
+          <ShapeDrawer
+            mode={drawerMode}
+            shape={drawerMode === "edit" ? selectedShape : undefined}
+            onClose={() => setDrawerMode(null)}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

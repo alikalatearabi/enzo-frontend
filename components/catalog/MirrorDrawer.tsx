@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { MirrorTemplate } from "../../lib/mocks/mirrors";
 import { Shape, useMockShapes } from "../../lib/mocks/shapes";
 import { useMockFeatureModules } from "../../lib/mocks/features";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Select } from "../ui/select";
+import { CustomSelect } from "../ui/custom-select";
 import { Textarea } from "../ui/textarea";
 import { BodyText, SectionTitle } from "../ui/typography";
 import { useToast } from "../ui/feedback/ToastProvider";
+import { toPersianNumber } from "../../lib/utils/numbers";
 
 type MirrorDrawerProps = {
   mode: "create" | "edit";
@@ -89,68 +91,83 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
   const handleSubmit = () => {
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) {
-      nextErrors.name = "Mirror name is required.";
+      nextErrors.name = "نام آینه الزامی است.";
     }
     if (!shapeId) {
-      nextErrors.shape = "Shape selection is required.";
+      nextErrors.shape = "انتخاب شکل الزامی است.";
     }
     if (!frame) {
-      nextErrors.frame = "Frame selection is required.";
+      nextErrors.frame = "انتخاب قاب الزامی است.";
     }
     if (!lightThread) {
-      nextErrors.lightThread = "Light thread selection is required.";
+      nextErrors.lightThread = "انتخاب نخ نوری الزامی است.";
     }
     if (defaultHeight <= 0) {
-      nextErrors.height = "Height must be greater than zero.";
+      nextErrors.height = "ارتفاع باید بیشتر از صفر باشد.";
     }
     if (defaultWidth <= 0) {
-      nextErrors.width = "Width must be greater than zero.";
+      nextErrors.width = "عرض باید بیشتر از صفر باشد.";
     }
     if (price < 0) {
-      nextErrors.price = "Price cannot be negative.";
+      nextErrors.price = "قیمت نمی‌تواند منفی باشد.";
     }
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       addToast({
-        title: "Validation failed",
-        description: "Review highlighted fields before saving.",
+        title: "اعتبارسنجی ناموفق",
+        description: "لطفاً فیلدهای مشخص شده را قبل از ذخیره بررسی کنید.",
         variant: "error",
       });
       return;
     }
     setErrors({});
     addToast({
-      title: mode === "create" ? "Mirror created" : "Mirror updated",
-      description: "Integrate POST/PUT /mirrors once backend is ready.",
+      title: mode === "create" ? "آینه ایجاد شد" : "آینه به‌روزرسانی شد",
+      description: "پس از آماده شدن بک‌اند، با POST/PUT /mirrors ادغام کنید.",
       variant: "success",
     });
     onClose();
   };
 
   const getShapeName = (shapeId: string) =>
-    shapes.find((shape) => shape.id === shapeId)?.name ?? "Unknown";
+    shapes.find((shape) => shape.id === shapeId)?.name ?? "نامشخص";
 
   return (
-    <div className="fixed inset-0 z-40 flex items-stretch justify-end bg-black/40">
-      <div className="flex h-full w-full max-w-xl flex-col gap-6 overflow-y-auto bg-layer p-6 shadow-xl">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-40 flex items-stretch justify-start bg-black/40"
+      dir="rtl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="flex h-full w-full max-w-xl flex-col gap-6 overflow-y-auto bg-layer p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <SectionTitle as="h3">
-              {mode === "create" ? "Create Mirror Template" : "Edit Mirror Template"}
+              {mode === "create" ? "ایجاد قالب آینه" : "ویرایش قالب آینه"}
             </SectionTitle>
             <BodyText>
-              Fields mirror the multipart form data DTO. Media upload will be added later.
+              فیلدها مطابق DTO فرم داده چند بخشی هستند. آپلود رسانه بعداً اضافه خواهد شد.
             </BodyText>
           </div>
           <Button variant="ghost" onClick={onClose}>
-            Close
+            بستن
           </Button>
         </div>
 
         <div className="grid gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="mirror-name" requiredMarker>
-              Name
+              نام
             </Label>
             <Input
               id="mirror-name"
@@ -159,7 +176,7 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
                 setName(event.target.value);
                 clearFieldError("name");
               }}
-              placeholder="Luxury Oval Mirror"
+              placeholder="آینه بیضی لوکس"
             />
             {errors.name && (
               <BodyText className="text-xs text-red-500">{errors.name}</BodyText>
@@ -168,24 +185,22 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="mirror-shape" requiredMarker>
-              Shape
+              شکل
             </Label>
-            <Select
-              id="mirror-shape"
+            <CustomSelect
               value={shapeId}
-              onChange={(event) => {
-                setShapeId(event.target.value);
+              onChange={(value) => {
+                setShapeId(value);
                 clearFieldError("shape");
               }}
-            >
-              {shapes.map((shape: Shape) => (
-                <option key={shape.id} value={shape.id}>
-                  {shape.name} {shape.deformed ? "(Deformed)" : ""}
-                </option>
-              ))}
-            </Select>
+              options={shapes.map((shape: Shape) => ({
+                value: shape.id,
+                label: `${shape.name}${shape.deformed ? " (بدشکل)" : ""}`,
+              }))}
+              placeholder="انتخاب شکل"
+            />
             <BodyText className="text-xs">
-              Currently selected: {getShapeName(shapeId)}
+              انتخاب شده: {getShapeName(shapeId)}
             </BodyText>
             {errors.shape && (
               <BodyText className="text-xs text-red-500">
@@ -197,7 +212,7 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="mirror-height" requiredMarker>
-                Default Height (cm)
+                ارتفاع پیش‌فرض (سانتی‌متر)
               </Label>
               <Input
                 id="mirror-height"
@@ -216,7 +231,7 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="mirror-width" requiredMarker>
-                Default Width (cm)
+                عرض پیش‌فرض (سانتی‌متر)
               </Label>
               <Input
                 id="mirror-width"
@@ -236,7 +251,7 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="mirror-price">Reference Price ($)</Label>
+            <Label htmlFor="mirror-price">قیمت مرجع ($)</Label>
             <Input
               id="mirror-price"
               type="number"
@@ -254,25 +269,23 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="mirror-frame" requiredMarker>
-                Default Frame
+                قاب پیش‌فرض
               </Label>
-              <Select
-                id="mirror-frame"
+              <CustomSelect
                 value={frame}
-              onChange={(event) => {
-                setFrame(event.target.value);
+                onChange={(value) => {
+                  setFrame(value);
                 clearFieldError("frame");
               }}
-              >
-                <option value="" disabled>
-                  Select frame
-                </option>
-                {frameOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </Select>
+                options={[
+                  { value: "", label: "انتخاب قاب" },
+                  ...frameOptions.map((option) => ({
+                    value: option.id,
+                    label: option.name,
+                  })),
+                ]}
+                placeholder="انتخاب قاب"
+              />
               {errors.frame && (
                 <BodyText className="text-xs text-red-500">
                   {errors.frame}
@@ -281,25 +294,23 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="mirror-lightThread" requiredMarker>
-                Default Light Thread
+                نخ نوری پیش‌فرض
               </Label>
-              <Select
-                id="mirror-lightThread"
+              <CustomSelect
                 value={lightThread}
-              onChange={(event) => {
-                setLightThread(event.target.value);
+                onChange={(value) => {
+                  setLightThread(value);
                 clearFieldError("lightThread");
               }}
-              >
-                <option value="" disabled>
-                  Select light thread
-                </option>
-                {lightThreadOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </Select>
+                options={[
+                  { value: "", label: "انتخاب نخ نوری" },
+                  ...lightThreadOptions.map((option) => ({
+                    value: option.id,
+                    label: option.name,
+                  })),
+                ]}
+                placeholder="انتخاب نخ نوری"
+              />
               {errors.lightThread && (
                 <BodyText className="text-xs text-red-500">
                   {errors.lightThread}
@@ -307,47 +318,47 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
               )}
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="mirror-backLight">Default Back Light</Label>
-              <Select
-                id="mirror-backLight"
+              <Label htmlFor="mirror-backLight">نور پس‌زمینه پیش‌فرض</Label>
+              <CustomSelect
                 value={backLight}
-                onChange={(event) => setBackLight(event.target.value)}
-              >
-                <option value="">None</option>
-                {backLightOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </Select>
+                onChange={(value) => setBackLight(value)}
+                options={[
+                  { value: "", label: "هیچکدام" },
+                  ...backLightOptions.map((option) => ({
+                    value: option.id,
+                    label: option.name,
+                  })),
+                ]}
+                placeholder="هیچکدام"
+              />
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="mirror-description">Internal Notes</Label>
+            <Label htmlFor="mirror-description">یادداشت‌های داخلی</Label>
             <Textarea
               id="mirror-description"
-              placeholder="Optional description for operators."
+              placeholder="توضیحات اختیاری برای اپراتورها."
               value={description}
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-border pt-4">
+        <div className="flex justify-start gap-3 border-t border-border pt-4">
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            لغو
           </Button>
           <Button
             variant="primary"
             onClick={handleSubmit}
             disabled={!isDirty}
           >
-            {mode === "create" ? "Create Mirror" : "Save Changes"}
+            {mode === "create" ? "ایجاد آینه" : "ذخیره تغییرات"}
           </Button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

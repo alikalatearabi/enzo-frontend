@@ -25,6 +25,10 @@ export function useOrdersData() {
     );
   };
 
+  const deleteOrder = (orderId: string) => {
+    setOrders((prev) => prev.filter((order) => order.id !== orderId));
+  };
+
   const statusCounts = useMemo(() => {
     return orders.reduce<Record<OrderStatus, number>>(
       (acc, order) => {
@@ -43,6 +47,7 @@ export function useOrdersData() {
   return {
     orders,
     updateOrderStatus,
+    deleteOrder,
     statusCounts,
   };
 }
