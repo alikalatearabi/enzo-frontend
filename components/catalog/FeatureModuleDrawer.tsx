@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { FeatureModule } from "../../lib/mocks/features";
+import type { FeatureModule } from "../../lib/api/features";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -21,8 +21,9 @@ type FeatureModuleDrawerProps = {
     code?: string;
     layerCount?: number;
     notes?: string;
-  }) => void;
+  }) => Promise<void>;
   existingModules: FeatureModule[];
+  isLoading?: boolean;
 };
 
 const typeOptions = [
@@ -33,7 +34,6 @@ const typeOptions = [
   { value: "thickness", label: "ضخامت" },
   { value: "sandblast", label: "سندبلاست" },
   { value: "lol", label: "LOL" },
-  { value: "mirrorModule", label: "ماژول آینه" },
 ];
 
 export function FeatureModuleDrawer({
@@ -42,6 +42,7 @@ export function FeatureModuleDrawer({
   onClose,
   onSubmit,
   existingModules,
+  isLoading = false,
 }: FeatureModuleDrawerProps) {
   const { addToast } = useToast();
   const [name, setName] = useState(feature?.name ?? "");
@@ -82,7 +83,7 @@ export function FeatureModuleDrawer({
     );
   }, [feature, name, type, code, layerCount, notes]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) {
       nextErrors.name = "نام ویژگی الزامی است.";
@@ -116,19 +117,13 @@ export function FeatureModuleDrawer({
       return;
     }
     setErrors({});
-    onSubmit({
+    await onSubmit({
       name,
       type: type as FeatureModule["type"],
       code,
       layerCount,
       notes,
     });
-    addToast({
-      title: mode === "create" ? "ماژول ویژگی ایجاد شد" : "ماژول ویژگی به‌روزرسانی شد",
-      description: "در آینده به endpoint های POST/PUT /{module} متصل شوید.",
-      variant: "success",
-    });
-    onClose();
   };
 
   return (
@@ -154,9 +149,6 @@ export function FeatureModuleDrawer({
             <SectionTitle as="h3">
               {mode === "create" ? "افزودن ماژول ویژگی" : "ویرایش ماژول ویژگی"}
             </SectionTitle>
-            <BodyText>
-              نمایانگر payload برای DTO خاص ماژول (مثلاً POST /frames).
-            </BodyText>
           </div>
           <Button variant="ghost" onClick={onClose}>
             بستن
@@ -254,7 +246,8 @@ export function FeatureModuleDrawer({
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={!isDirty}
+            disabled={!isDirty || isLoading}
+            isLoading={isLoading}
           >
             {mode === "create" ? "ایجاد ماژول ویژگی" : "ذخیره تغییرات"}
           </Button>

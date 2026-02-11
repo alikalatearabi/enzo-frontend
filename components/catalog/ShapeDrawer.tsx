@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Shape } from "../../lib/mocks/shapes";
+import type { Shape } from "../../lib/api/shapes";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { BodyText, SectionTitle } from "../ui/typography";
 import { useToast } from "../ui/feedback/ToastProvider";
+import { useCreateShape, useUpdateShape } from "../../hooks/api/useShapes";
 
 type ShapeDrawerProps = {
   mode: "create" | "edit";
@@ -17,6 +18,8 @@ type ShapeDrawerProps = {
 
 export function ShapeDrawer({ mode, shape, onClose }: ShapeDrawerProps) {
   const { addToast } = useToast();
+  const createShape = useCreateShape();
+  const updateShape = useUpdateShape();
   const [name, setName] = useState(shape?.name ?? "");
   const [deformed, setDeformed] = useState(shape?.deformed ?? false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,7 +46,7 @@ export function ShapeDrawer({ mode, shape, onClose }: ShapeDrawerProps) {
     return shape.name !== name || shape.deformed !== deformed;
   }, [shape, name, deformed]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) {
       nextErrors.name = "نام شکل الزامی است.";
@@ -58,14 +61,34 @@ export function ShapeDrawer({ mode, shape, onClose }: ShapeDrawerProps) {
       return;
     }
     setErrors({});
-    addToast({
-      title: mode === "create" ? "شکل ایجاد شد" : "شکل به‌روزرسانی شد",
-      description: mode === "create"
-        ? "شکل جدید با موفقیت ایجاد شد."
-        : "تغییرات با موفقیت ذخیره شد.",
-      variant: "success",
-    });
-    onClose();
+
+    try {
+      if (mode === "create") {
+        await createShape.mutateAsync({ name: name.trim(), deformed });
+        addToast({
+          title: "شکل ایجاد شد",
+          description: "شکل جدید با موفقیت ایجاد شد.",
+          variant: "success",
+        });
+      } else if (mode === "edit" && shape) {
+        await updateShape.mutateAsync({
+          id: shape.id,
+          payload: { name: name.trim(), deformed },
+        });
+        addToast({
+          title: "شکل به‌روزرسانی شد",
+          description: "تغییرات با موفقیت ذخیره شد.",
+          variant: "success",
+        });
+      }
+      onClose();
+    } catch (error) {
+      addToast({
+        title: "خطا در ذخیره شکل",
+        description: "لطفاً دوباره تلاش کنید یا بعداً مراجعه کنید.",
+        variant: "error",
+      });
+    }
   };
 
   return (
@@ -129,7 +152,7 @@ export function ShapeDrawer({ mode, shape, onClose }: ShapeDrawerProps) {
                 className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary"
               />
               <Label htmlFor="shape-deformed" className="cursor-pointer">
-                بدشکل
+                دفرمه
               </Label>
             </div>
             <BodyText className="text-xs text-muted-foreground">
@@ -145,7 +168,7 @@ export function ShapeDrawer({ mode, shape, onClose }: ShapeDrawerProps) {
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={!isDirty}
+            disabled={!isDirty || createShape.isPending || updateShape.isPending}
           >
             {mode === "create" ? "ایجاد شکل" : "ذخیره تغییرات"}
           </Button>

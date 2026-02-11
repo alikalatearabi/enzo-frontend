@@ -6,9 +6,7 @@ import { ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
-  BodyText,
   PageTitle,
-  SectionSubtitle,
 } from "../ui/typography";
 import { WizardStepper } from "./WizardStepper";
 import { useToast } from "../ui/feedback/ToastProvider";
@@ -17,9 +15,10 @@ import {
   OrderWizardData,
   OrderWizardStepId,
 } from "../../hooks/orders/useOrderWizard";
-import { useMockUsers } from "../../lib/mocks/users";
-import { useMockMirrors } from "../../lib/mocks/mirrors";
-import { useMockFeatureModules } from "../../lib/mocks/features";
+import { useUsers } from "../../hooks/api/useUsers";
+import { useMirrors } from "../../hooks/api/useMirrors";
+import { useFeatureModules } from "../../hooks/api/useFeatureModules";
+import { useCreateOrder, useUpdateOrder } from "../../hooks/api/useOrders";
 import {
   ParticipantsStep,
   MirrorStep,
@@ -33,17 +32,20 @@ import { validateStep } from "./OrderWizardSteps/utils";
 
 type OrderWizardProps = {
   initialData?: Partial<OrderWizardData>;
+  orderId?: string | null;
 };
 
-export function OrderWizard({ initialData }: OrderWizardProps = {}) {
+export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { state, dispatch, steps, isLastStep } = useOrderWizard(initialData);
-  const { data: customers } = useMockUsers("CUSTOMER");
-  const { data: cutters } = useMockUsers("CUTTER");
-  const { data: mirrors } = useMockMirrors();
-  const { data: featureModules } = useMockFeatureModules();
+  const { data: customers = [] } = useUsers("CUSTOMER");
+  const { data: cutters = [] } = useUsers("CUTTER");
+  const { data: mirrorsRaw = [] } = useMirrors();
+  const { data: featureModules = [] } = useFeatureModules();
+  const createOrder = useCreateOrder();
+  const updateOrder = useUpdateOrder();
   const { addToast } = useToast();
 
   const clearError = (field: keyof OrderWizardData | string) => {
@@ -56,6 +58,7 @@ export function OrderWizard({ initialData }: OrderWizardProps = {}) {
   };
 
   const setField = (field: keyof OrderWizardData, value: unknown) => {
+    console.log("setField", field, value);
     dispatch({ type: "SET_FIELD", payload: { field, value } });
     clearError(field);
   };
@@ -89,14 +92,20 @@ export function OrderWizard({ initialData }: OrderWizardProps = {}) {
       featureModules.filter((feature) => feature.type === "thickness"),
     [featureModules],
   );
-  const moduleOptions = useMemo(
+  // Mirror modules are not yet available on the backend,
+  // so keep this list empty for now.
+  const moduleOptions: typeof featureModules = useMemo(() => [], [featureModules]);
+
+  const mirrors = useMemo(
     () =>
-      featureModules.filter(
-        (feature) =>
-          feature.type === "mirrorModule" &&
-          !feature.name.toLowerCase().includes("defog"),
-      ),
-    [featureModules],
+      mirrorsRaw.map((mirror) => ({
+        id: mirror.id,
+        name: mirror.name,
+        shapeName: mirror.shape.name,
+        price: mirror.price,
+        picture: mirror.picture ? { url: mirror.picture } : undefined,
+      })),
+    [mirrorsRaw],
   );
 
   const currentStepId: OrderWizardStepId = steps[state.currentStep].id;
@@ -113,21 +122,6 @@ export function OrderWizard({ initialData }: OrderWizardProps = {}) {
 
   const handleMirrorSelection = (mirrorId: string) => {
     setField("mirror", mirrorId);
-    const selected = mirrors.find((mirror) => mirror.id === mirrorId);
-    if (selected) {
-      if (selected.features.frame) {
-        setField("frame", selected.features.frame);
-      }
-      if (selected.features.lightThread) {
-        setField("lightThread", selected.features.lightThread);
-      }
-      if (selected.features.backLight) {
-        setField("backLight", selected.features.backLight);
-      }
-      if (selected.features.mirrorModules) {
-        setField("mirrorModule", selected.features.mirrorModules);
-      }
-    }
     clearError("mirror");
   };
 
@@ -142,7 +136,62 @@ export function OrderWizard({ initialData }: OrderWizardProps = {}) {
     return validation.isValid;
   };
 
-  const onNext = () => {
+  const buildCreatePayload = (data: OrderWizardData) => {
+    if (
+      !data.customer ||
+      !data.cutter ||
+      !data.mirror ||
+      !data.frame ||
+      !data.lightThread ||
+      !data.backLight ||
+      !data.zoom ||
+      !data.sandblast ||
+      !data.thickness ||
+      !data.count ||
+      !data.height ||
+      !data.width ||
+      !data.startDate ||
+      !data.endDate
+    ) {
+      throw new Error("برخی فیلدهای الزامی در ویزارد خالی هستند.");
+    }
+
+    const timestamp = Date.now();
+    const workOrder = `WO-${timestamp}`;
+    const invoiceID = `INV-${timestamp}`;
+
+    return {
+      workOrder,
+      description: data.description ?? "",
+      count: data.count,
+      mirror: data.mirror,
+      backLight: data.backLight,
+      lol: data.mirror, // TODO: map to real LOL once available in UI
+      height: data.height,
+      width: data.width,
+      thickness: data.thickness,
+      mirrorModule: data.mirrorModule,
+      zoom: data.zoom,
+      sandblast: data.sandblast,
+      frame: data.frame,
+      lightThread: data.lightThread,
+      cornerBend: data.cornerBend,
+      customer: data.customer,
+      cutter: data.cutter,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      status: data.status,
+      invoiceID,
+    };
+  };
+
+  const buildUpdatePayload = (data: OrderWizardData) => {
+    // For now, send full payload for simplicity; backend will treat missing fields as unchanged
+    const base = buildCreatePayload(data);
+    return base;
+  };
+
+  const onNext = async () => {
     if (!validateCurrentStep()) {
       addToast({
         title: "اعتبارسنجی مورد نیاز",
@@ -151,16 +200,38 @@ export function OrderWizard({ initialData }: OrderWizardProps = {}) {
       });
       return;
     }
-    if (isLastStep) {
+
+    if (!isLastStep) {
+      dispatch({ type: "NEXT_STEP" });
+      return;
+    }
+
+    try {
       setSubmitted(true);
-      console.info("Prepared order DTO", state.data);
+
+      if (orderId) {
+        const payload = buildUpdatePayload(state.data);
+        await updateOrder.mutateAsync({ id: orderId, payload });
+      } else {
+        const payload = buildCreatePayload(state.data);
+        await createOrder.mutateAsync(payload);
+      }
+
       addToast({
-        title: "سفارش آماده شد",
-        description: "ارسال شبیه‌سازی شده را با POST /orders جایگزین کنید.",
+        title: "سفارش ثبت شد",
+        description: "سفارش با موفقیت در سیستم ذخیره شد.",
         variant: "success",
       });
-    } else {
-      dispatch({ type: "NEXT_STEP" });
+      router.push("/orders");
+    } catch (error) {
+      addToast({
+        title: "خطا در ثبت سفارش",
+        description:
+          error instanceof Error
+            ? error.message
+            : "مشکلی در ثبت سفارش رخ داد.",
+        variant: "error",
+      });
     }
   };
 
@@ -227,8 +298,8 @@ export function OrderWizard({ initialData }: OrderWizardProps = {}) {
         return <ScheduleStep {...stepProps} />;
       case "review": {
         const selectedMirror = mirrors.find((mirror) => mirror.id === state.data.mirror);
-        const selectedCustomer = customers.find((customer) => customer.id === state.data.customer);
-        const selectedCutter = cutters.find((cutter) => cutter.id === state.data.cutter);
+        const selectedCustomer = customers.find((customer) => customer._id === state.data.customer);
+        const selectedCutter = cutters.find((cutter) => cutter._id === state.data.cutter);
         const selectedFrame = frameOptions.find((frame) => frame.id === state.data.frame);
         const selectedLightThread = lightThreadOptions.find((item) => item.id === state.data.lightThread);
         const selectedBackLight = backLightOptions.find((item) => item.id === state.data.backLight);

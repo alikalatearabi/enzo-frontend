@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppShell } from "../components/layout/AppShell";
 import { ToastProvider } from "../components/ui/feedback/ToastProvider";
 import { ThemeProvider } from "../components/theme/ThemeProvider";
+import { QueryProvider } from "../lib/providers/QueryProvider";
 
 const themeInitScript = `
 (function() {
@@ -42,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fa" dir="rtl">
+    <html lang="fa" dir="rtl" data-theme="light" suppressHydrationWarning>
       <head>
         <script
           suppressHydrationWarning
@@ -50,11 +51,13 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider>
-          <ToastProvider>
-            <AppShell>{children}</AppShell>
-          </ToastProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <AppShell>{children}</AppShell>
+            </ToastProvider>
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

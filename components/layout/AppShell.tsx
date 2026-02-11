@@ -63,24 +63,6 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           ))}
         </nav>
-        <div className="shrink-0 border-t border-border bg-layer-hover/50 px-6 py-4">
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">وضعیت کارخانه</span>
-              <span className="flex items-center gap-1.5 font-medium text-foreground">
-                <span className="h-2 w-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
-                عادی
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">MinIO</span>
-              <span className="flex items-center gap-1.5 font-medium text-foreground">
-                <span className="h-2 w-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
-                متصل
-              </span>
-            </div>
-          </div>
-        </div>
       </aside>
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-20 shrink-0 items-center justify-between border-b border-border bg-layer/80 backdrop-blur-sm px-6">

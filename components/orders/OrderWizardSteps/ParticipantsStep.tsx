@@ -7,8 +7,8 @@ import { BodyText, MutedText } from "../../ui/typography";
 import { StepProps } from "./types";
 
 type ParticipantsStepProps = StepProps & {
-  customers: Array<{ id: string; name: string }>;
-  cutters: Array<{ id: string; name: string }>;
+  customers: Array<{ _id: string; name: string }>;
+  cutters: Array<{ _id: string; name: string }>;
 };
 
 export function ParticipantsStep({
@@ -30,7 +30,7 @@ export function ParticipantsStep({
           options={[
             { value: "", label: "انتخاب مشتری" },
             ...customers.map((customer) => ({
-              value: customer.id,
+              value: customer._id,
               label: customer.name,
             })),
           ]}
@@ -52,7 +52,7 @@ export function ParticipantsStep({
           options={[
             { value: "", label: "انتخاب برشکار" },
             ...cutters.map((cutter) => ({
-              value: cutter.id,
+              value: cutter._id,
               label: cutter.name,
             })),
           ]}

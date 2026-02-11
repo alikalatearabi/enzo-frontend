@@ -8,7 +8,7 @@ export function Table({
     <div className="w-full overflow-hidden rounded-lg border border-border bg-layer">
       <table
         className={cn(
-          "w-full border-collapse text-left text-sm text-foreground",
+          "w-full border-collapse text-right text-sm text-foreground",
           className,
         )}
         {...props}
@@ -58,7 +58,7 @@ export function TableHead({
   return (
     <th
       className={cn(
-        "px-4 py-3 font-semibold text-muted-foreground first:pl-6 last:pr-6",
+        "px-4 py-3 text-right font-semibold text-muted-foreground first:pr-6 last:pl-6",
         className,
       )}
       {...props}
@@ -73,7 +73,7 @@ export function TableCell({
   return (
     <td
       className={cn(
-        "px-4 py-4 text-sm text-foreground first:pl-6 last:pr-6",
+        "px-4 py-4 text-right text-sm text-foreground first:pr-6 last:pl-6",
         className,
       )}
       {...props}

@@ -1,7 +1,8 @@
- "use client";
+"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Edit2, Trash2 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
@@ -18,20 +19,35 @@ import {
   SectionTitle,
 } from "../../../components/ui/typography";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
-import { useFeatureModulesData } from "../../../hooks/catalog/useFeatureModulesData";
+import {
+  useFeatureModules,
+  useCreateFeatureModule,
+  useUpdateFeatureModule,
+  useDeleteFeatureModule,
+} from "../../../hooks/api/useFeatureModules";
+import { useToast } from "../../../components/ui/feedback/ToastProvider";
 import { CustomSelect } from "../../../components/ui/custom-select";
 import { Input } from "../../../components/ui/input";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { FeatureModuleDrawer } from "../../../components/catalog/FeatureModuleDrawer";
 import { toPersianNumber } from "../../../lib/utils/numbers";
+import { ConfirmDialog } from "../../../components/ui/dialog";
 
 export default function CatalogFeaturesPage() {
-  const { modules, createModule, updateModule } = useFeatureModulesData();
+  const { data: modules = [], isLoading, isError } = useFeatureModules();
+  const createModule = useCreateFeatureModule();
+  const updateModule = useUpdateFeatureModule();
+  const deleteModule = useDeleteFeatureModule();
+  const { addToast } = useToast();
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   const selectedFeature = modules.find((feature) => feature.id === selectedFeatureId);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [featureToDelete, setFeatureToDelete] = useState<
+    { id: string; name: string; type: string } | null
+  >(null);
 
   const typeLabels: Record<string, string> = {
     frame: "قاب",
@@ -41,16 +57,19 @@ export default function CatalogFeaturesPage() {
     thickness: "ضخامت",
     sandblast: "سندبلاست",
     lol: "LOL",
-    mirrorModule: "ماژول آینه",
   };
 
-  const filteredModules = modules.filter((feature) => {
-    const matchesType = typeFilter === "all" || feature.type === typeFilter;
-    const matchesSearch =
-      !searchTerm ||
-      feature.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesType && matchesSearch;
-  });
+  const filteredModules = useMemo(
+    () =>
+      modules.filter((feature) => {
+        const matchesType = typeFilter === "all" || feature.type === typeFilter;
+        const matchesSearch =
+          !searchTerm ||
+          feature.name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesType && matchesSearch;
+      }),
+    [modules, typeFilter, searchTerm],
+  );
 
   return (
     <section className="flex flex-1 flex-col gap-6" dir="rtl">
@@ -87,17 +106,27 @@ export default function CatalogFeaturesPage() {
             </BodyText>
           </div>
 
-          {filteredModules.length === 0 ? (
-            <EmptyState
-              title="ماژول ویژگی یافت نشد"
-              description="فیلتر نوع را تغییر دهید یا جستجو را پاک کنید تا رکوردهای بیشتری را ببینید."
-              actionLabel="بازنشانی فیلترها"
-              onAction={() => {
-                setSearchTerm("");
-                setTypeFilter("all");
-              }}
-            />
-          ) : (
+          {isLoading && (
+            <BodyText className="text-sm text-muted-foreground">
+              در حال بارگذاری ماژول‌ها...
+            </BodyText>
+          )}
+          {isError && !isLoading && (
+            <BodyText className="text-sm text-red-500">
+              خطا در دریافت فهرست ماژول‌ها.
+            </BodyText>
+          )}
+          {!isLoading && !isError && filteredModules.length === 0 ? (
+              <EmptyState
+                title="ماژول ویژگی یافت نشد"
+                description="فیلتر نوع را تغییر دهید یا جستجو را پاک کنید تا رکوردهای بیشتری را ببینید."
+                actionLabel="بازنشانی فیلترها"
+                onAction={() => {
+                  setSearchTerm("");
+                  setTypeFilter("all");
+                }}
+              />
+            ) : !isLoading && !isError ? (
           <Table>
             <TableHeader>
               <TableRow>
@@ -105,7 +134,7 @@ export default function CatalogFeaturesPage() {
                 <TableHead>نوع</TableHead>
                 <TableHead>ویژگی‌ها</TableHead>
                 <TableHead>به‌روزرسانی</TableHead>
-                <TableHead className="text-left">عملیات</TableHead>
+                <TableHead>عملیات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,25 +163,49 @@ export default function CatalogFeaturesPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-xs">
-                    {new Date(feature.updatedAt).toLocaleDateString("fa-IR")}
+                    {feature.updatedAt
+                      ? new Date(feature.updatedAt).toLocaleDateString("fa-IR")
+                      : "—"}
                   </TableCell>
-                  <TableCell className="text-left">
-                    <Button
-                      variant="subtle"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedFeatureId(feature.id);
-                        setDrawerMode("edit");
-                      }}
-                    >
-                      ویرایش
-                    </Button>
+                  <TableCell>
+                    <div className="flex justify-start gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-md hover:bg-primary/10"
+                        onClick={() => {
+                          setSelectedFeatureId(feature.id);
+                          setDrawerMode("edit");
+                        }}
+                        title="ویرایش ماژول"
+                        aria-label="ویرایش ماژول"
+                      >
+                        <Edit2 className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-md hover:bg-red-500/10"
+                        onClick={() => {
+                          setFeatureToDelete({
+                            id: feature.id,
+                            name: feature.name,
+                            type: feature.type,
+                          });
+                          setDeleteDialogOpen(true);
+                        }}
+                        title="حذف ماژول"
+                        aria-label="حذف ماژول"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -162,11 +215,10 @@ export default function CatalogFeaturesPage() {
             setSelectedFeatureId(null);
             setDrawerMode("create");
           }}
+          disabled={isLoading || isError}
         >
           افزودن ماژول ویژگی
         </Button>
-        <Button variant="subtle">مدیریت وابستگی‌ها</Button>
-        <Button variant="ghost">مشاهده نگاشت حسابداری</Button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -175,17 +227,89 @@ export default function CatalogFeaturesPage() {
             mode={drawerMode}
             feature={drawerMode === "edit" ? selectedFeature : undefined}
             onClose={() => setDrawerMode(null)}
-            onSubmit={(payload) => {
-              if (drawerMode === "create") {
-                createModule(payload);
-              } else if (drawerMode === "edit" && selectedFeature) {
-                updateModule({ ...payload, id: selectedFeature.id });
+            onSubmit={async (payload) => {
+              try {
+                if (drawerMode === "create") {
+                  await createModule.mutateAsync({
+                    name: payload.name,
+                    type: payload.type,
+                    code: payload.code,
+                    layerCount: payload.layerCount,
+                  });
+                  addToast({
+                    title: "ماژول ویژگی ایجاد شد",
+                    description: "ماژول جدید با موفقیت ایجاد شد.",
+                    variant: "success",
+                  });
+                  setDrawerMode(null);
+                } else if (drawerMode === "edit" && selectedFeature) {
+                  await updateModule.mutateAsync({
+                    id: selectedFeature.id,
+                    name: payload.name,
+                    type: payload.type,
+                    code: payload.code,
+                    layerCount: payload.layerCount,
+                  });
+                  addToast({
+                    title: "ماژول ویژگی به‌روزرسانی شد",
+                    description: "تغییرات با موفقیت ذخیره شد.",
+                    variant: "success",
+                  });
+                  setDrawerMode(null);
+                }
+              } catch (error) {
+                addToast({
+                  title: "خطا در ذخیره ماژول",
+                  description: "لطفاً دوباره تلاش کنید یا بعداً مراجعه کنید.",
+                  variant: "error",
+                });
+                throw error; // Re-throw so drawer doesn't close on error
               }
             }}
             existingModules={modules}
+            isLoading={createModule.isPending || updateModule.isPending}
           />
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setFeatureToDelete(null);
+        }}
+        onConfirm={async () => {
+          if (!featureToDelete) return;
+          try {
+            await deleteModule.mutateAsync({
+              id: featureToDelete.id,
+              type: featureToDelete.type as any,
+            });
+            addToast({
+              title: "ماژول حذف شد",
+              description: `ماژول "${featureToDelete.name}" با موفقیت حذف شد.`,
+              variant: "success",
+            });
+            setFeatureToDelete(null);
+          } catch {
+            addToast({
+              title: "خطا در حذف ماژول",
+              description:
+                "متأسفانه امکان حذف ماژول وجود ندارد. لطفاً دوباره تلاش کنید.",
+              variant: "error",
+            });
+          }
+        }}
+        title="حذف ماژول"
+        description={
+          featureToDelete
+            ? `آیا از حذف ماژول "${featureToDelete.name}" اطمینان دارید؟ این عمل قابل بازگشت نیست.`
+            : ""
+        }
+        confirmLabel="حذف"
+        cancelLabel="لغو"
+        variant="destructive"
+      />
     </section>
   );
 }

@@ -1,6 +1,6 @@
- "use client";
+"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { Button } from "../../../components/ui/button";
@@ -25,20 +25,16 @@ import {
 } from "../../../components/ui/polished-table";
 import { Input } from "../../../components/ui/input";
 import { CustomSelect } from "../../../components/ui/custom-select";
-import { formatPersianCurrency, toPersianNumber } from "../../../lib/utils/numbers";
-import { useMockMirrors } from "../../../lib/mocks/mirrors";
-import { useMockShapes } from "../../../lib/mocks/shapes";
-import { useMockFeatureModules } from "../../../lib/mocks/features";
+import {
+  formatPersianCurrency,
+  toPersianNumber,
+} from "../../../lib/utils/numbers";
 import { MirrorDrawer } from "../../../components/catalog/MirrorDrawer";
 import { useMirrorFilters } from "../../../hooks/catalog/useMirrorFilters";
-import { MediaUploadModal } from "../../../components/media/MediaUploadModal";
-import { useMediaUploads } from "../../../hooks/media/useMediaUploads";
-import { MediaAsset } from "../../../lib/mocks/media";
+import { useMirrors } from "../../../hooks/api/useMirrors";
 
 export default function CatalogMirrorsPage() {
-  const { data: mirrors } = useMockMirrors();
-  const { data: shapes } = useMockShapes();
-  const { data: featureModules } = useMockFeatureModules();
+  const { data: mirrors = [], isLoading, isError } = useMirrors();
   const {
     filteredMirrors,
     searchTerm,
@@ -48,19 +44,19 @@ export default function CatalogMirrorsPage() {
   } = useMirrorFilters(mirrors);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit" | null>(null);
   const [selectedMirrorId, setSelectedMirrorId] = useState<string | null>(null);
-  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
-  const { addAsset } = useMediaUploads();
   const selectedMirror = mirrors.find((mirror) => mirror.id === selectedMirrorId);
 
-  const findShape = (shapeId: string) =>
-    shapes.find((shape) => shape.id === shapeId)?.name ?? "نامشخص";
-
-  const findFeature = (featureId: string | undefined) =>
-    featureModules.find((feature) => feature.id === featureId)?.name ?? "—";
-
-  const handleMediaUpload = (asset: MediaAsset) => {
-    addAsset(asset);
-  };
+  const shapeOptions = useMemo(
+    () => [
+      { value: "all", label: "همه اشکال" },
+      ...Array.from(
+        new Map(
+          mirrors.map((mirror) => [mirror.shape.id, mirror.shape.name]),
+        ).entries(),
+      ).map(([id, name]) => ({ value: id, label: name })),
+    ],
+    [mirrors],
+  );
 
   return (
     <section className="flex flex-1 flex-col gap-6" dir="rtl">
@@ -83,25 +79,21 @@ export default function CatalogMirrorsPage() {
             <CustomSelect
               value={shapeFilter}
               onChange={(value) => setShapeFilter(value as "all" | string)}
-              options={[
-                { value: "all", label: "همه اشکال" },
-                ...shapes.map((shape) => ({
-                  value: shape.id,
-                  label: shape.name,
-                })),
-              ]}
+              options={shapeOptions}
               className="w-48"
             />
             <BodyText className="text-xs">
-              نمایش {toPersianNumber(filteredMirrors.length)} از {toPersianNumber(mirrors.length)} قالب
+              {isLoading
+                ? "در حال بارگذاری..."
+                : isError
+                  ? "خطا در دریافت داده‌ها"
+                  : `نمایش ${toPersianNumber(filteredMirrors.length)} از ${toPersianNumber(mirrors.length)} قالب`}
             </BodyText>
           </div>
           <PolishedTable>
             <PolishedTableHeader>
               <PolishedTableHead>آینه</PolishedTableHead>
               <PolishedTableHead>شکل</PolishedTableHead>
-              <PolishedTableHead>ابعاد</PolishedTableHead>
-              <PolishedTableHead>ویژگی‌ها</PolishedTableHead>
               <PolishedTableHead>قیمت</PolishedTableHead>
               <PolishedTableHead align="center">عملیات</PolishedTableHead>
             </PolishedTableHeader>
@@ -113,7 +105,7 @@ export default function CatalogMirrorsPage() {
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-layer-hover to-layer">
                         {mirror.picture ? (
                           <Image
-                            src={mirror.picture.url}
+                            src={mirror.picture}
                             alt={mirror.name}
                             width={48}
                             height={48}
@@ -154,23 +146,7 @@ export default function CatalogMirrorsPage() {
                       </div>
                     </div>
                   </PolishedTableCell>
-                  <PolishedTableCell>{findShape(mirror.shape)}</PolishedTableCell>
-                  <PolishedTableCell>
-                    {toPersianNumber(mirror.defaultHeight)} × {toPersianNumber(mirror.defaultWidth)} سانتی‌متر
-                  </PolishedTableCell>
-                  <PolishedTableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                        قاب: {findFeature(mirror.features.frame)}
-                      </span>
-                      <span className="rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                        نور: {findFeature(mirror.features.lightThread)}
-                      </span>
-                      <span className="rounded-full bg-layer-hover px-2 py-1 text-xs font-medium text-muted-foreground">
-                        نور پس‌زمینه: {findFeature(mirror.features.backLight)}
-                      </span>
-                    </div>
-                  </PolishedTableCell>
+                  <PolishedTableCell>{mirror.shape.name}</PolishedTableCell>
                   <PolishedTableCell>
                     {mirror.price ? formatPersianCurrency(mirror.price) : "—"}
                   </PolishedTableCell>
@@ -203,12 +179,6 @@ export default function CatalogMirrorsPage() {
         >
           افزودن قالب آینه
         </Button>
-        <Button 
-          variant="secondary"
-          onClick={() => setIsMediaModalOpen(true)}
-        >
-          آپلود رسانه
-        </Button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -222,12 +192,7 @@ export default function CatalogMirrorsPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {isMediaModalOpen && (
-          <MediaUploadModal
-            onClose={() => setIsMediaModalOpen(false)}
-            onUpload={handleMediaUpload}
-          />
-        )}
+        {/* Media upload is driven by a separate media catalog page now */}
       </AnimatePresence>
     </section>
   );

@@ -19,6 +19,11 @@ const ICONS = {
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -31,6 +36,11 @@ export function ThemeToggle() {
     }
     return () => window.removeEventListener("click", handleClick);
   }, [open]);
+
+  if (!mounted) {
+    // Avoid rendering theme-dependent UI until after hydration
+    return null;
+  }
 
   return (
     <div className="relative" data-theme-toggle>

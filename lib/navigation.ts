@@ -12,6 +12,7 @@ export const NAV_SECTIONS = [
     label: "عملیات",
     items: [
       { label: "سفارش‌ها", href: "/orders" },
+      { label: "کاربران", href: "/users" },
       { label: "قیمت‌گذاری", href: "/pricing" },
       { label: "ابزارها و گزارش‌گیری", href: "/tools" },
       { label: "گالری رسانه", href: "/media" },

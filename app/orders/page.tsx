@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { formatPersianCurrency, toPersianNumber } from "../../lib/utils/numbers";
 import {
@@ -34,6 +34,7 @@ import { Input } from "../../components/ui/input";
 import { EmptyState } from "../../components/ui/empty-state";
 import { ConfirmDialog } from "../../components/ui/dialog";
 import { CustomSelect } from "../../components/ui/custom-select";
+import { OrderStatus } from "../../lib/api/orders";
 
 const statusOptions = [
   { value: "PROFORMA_INVOICE", label: "پیش‌فاکتور" },
@@ -44,7 +45,8 @@ const statusOptions = [
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { orders, updateOrderStatus, deleteOrder, statusCounts } = useOrdersData();
+  const { orders, updateOrderStatus, deleteOrder, statusCounts, isLoading, isError } =
+    useOrdersData();
   const statusLabel = statusOptions.reduce<Record<string, string>>(
     (acc, option) => {
       acc[option.value] = option.label;
@@ -52,18 +54,22 @@ export default function OrdersPage() {
     },
     {},
   );
-  const [statusFilter, setStatusFilter] = useState<"all" | keyof typeof statusLabel>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<{ id: string; workOrder: string } | null>(null);
-  const filteredOrders = orders.filter((order) => {
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    const matchesSearch =
-      !searchTerm ||
-      order.workOrder.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const filteredOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+        const matchesSearch =
+          !searchTerm ||
+          order.workOrder.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesStatus && matchesSearch;
+      }),
+    [orders, searchTerm, statusFilter],
+  );
   const { addToast } = useToast();
 
   return (
@@ -80,7 +86,7 @@ export default function OrdersPage() {
                 {statusLabel[status]}
               </span>
               <span className="text-2xl font-semibold text-foreground">
-                {toPersianNumber(count)}
+                {isLoading ? "…" : toPersianNumber(count)}
               </span>
             </CardContent>
           </Card>
@@ -116,7 +122,12 @@ export default function OrdersPage() {
             </BodyText>
           </div>
 
-          {filteredOrders.length === 0 ? (
+          {isError ? (
+            <EmptyState
+              title="خطا در بارگذاری سفارش‌ها"
+              description="در بارگذاری سفارش‌ها مشکلی پیش آمد. لطفاً بعداً دوباره تلاش کنید."
+            />
+          ) : filteredOrders.length === 0 && !isLoading ? (
             <EmptyState
               title="هیچ سفارشی با فیلترهای شما مطابقت ندارد"
               description="فیلتر وضعیت را تنظیم کنید یا عبارت جستجو را پاک کنید تا سفارش‌های بیشتری را مشاهده کنید."
@@ -137,7 +148,36 @@ export default function OrdersPage() {
               <PolishedTableHead align="center">عملیات</PolishedTableHead>
             </PolishedTableHeader>
             <PolishedTableBody>
-              {filteredOrders.map((order, index) => (
+              {isLoading
+                ? Array.from({ length: 4 }).map((_, index) => (
+                    <PolishedTableRow key={index}>
+                      <PolishedTableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="h-4 w-20 animate-pulse rounded bg-muted" />
+                          <span className="h-3 w-24 animate-pulse rounded bg-muted" />
+                        </div>
+                      </PolishedTableCell>
+                      <PolishedTableCell>
+                        <span className="h-4 w-24 animate-pulse rounded bg-muted" />
+                      </PolishedTableCell>
+                      <PolishedTableCell>
+                        <span className="h-4 w-24 animate-pulse rounded bg-muted" />
+                      </PolishedTableCell>
+                      <PolishedTableCell>
+                        <span className="h-4 w-24 animate-pulse rounded bg-muted" />
+                      </PolishedTableCell>
+                      <PolishedTableCell>
+                        <span className="h-4 w-16 animate-pulse rounded bg-muted" />
+                      </PolishedTableCell>
+                      <PolishedTableCell align="center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="h-8 w-8 animate-pulse rounded-md bg-muted" />
+                          <span className="h-8 w-8 animate-pulse rounded-md bg-muted" />
+                        </div>
+                      </PolishedTableCell>
+                    </PolishedTableRow>
+                  ))
+                : filteredOrders.map((order, index) => (
                 <PolishedTableRow key={order.id}>
                   <PolishedTableCell>
                     <div className="flex flex-col gap-1">
@@ -163,11 +203,11 @@ export default function OrdersPage() {
                       onChange={(newStatus) => {
                         updateOrderStatus({
                           orderId: order.id,
-                          status: newStatus as typeof order.status,
+                          status: newStatus as OrderStatus,
                         });
                         addToast({
                           title: "وضعیت به‌روزرسانی شد",
-                          description: `سفارش ${order.workOrder} به ${statusLabel[newStatus]} تنظیم شد.`,
+                          description: `سفارش ${order.workOrder} به ${statusLabel[newStatus]}`,
                           variant: "success",
                         });
                       }}

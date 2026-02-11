@@ -2,56 +2,50 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { MirrorTemplate } from "../../lib/mocks/mirrors";
-import { Shape, useMockShapes } from "../../lib/mocks/shapes";
-import { useMockFeatureModules } from "../../lib/mocks/features";
+import { Mirror } from "../../lib/api/mirrors";
+import { useShapes } from "../../hooks/api/useShapes";
+import { useCreateMirror, useUpdateMirror } from "../../hooks/api/useMirrors";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { CustomSelect } from "../ui/custom-select";
-import { Textarea } from "../ui/textarea";
 import { BodyText, SectionTitle } from "../ui/typography";
 import { useToast } from "../ui/feedback/ToastProvider";
-import { toPersianNumber } from "../../lib/utils/numbers";
 
 type MirrorDrawerProps = {
   mode: "create" | "edit";
-  mirror?: MirrorTemplate;
+  mirror?: Mirror;
   onClose: () => void;
 };
 
 export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
-  const { data: shapes } = useMockShapes();
-  const { data: features } = useMockFeatureModules();
+  const { data: shapes = [], isLoading: shapesLoading } = useShapes();
   const { addToast } = useToast();
+  const createMirror = useCreateMirror();
+  const updateMirror = useUpdateMirror();
   const [name, setName] = useState(mirror?.name ?? "");
-  const [shapeId, setShapeId] = useState(mirror?.shape ?? shapes[0]?.id ?? "");
-  const [description, setDescription] = useState(mirror?.features ? "Prefilled features on load" : "");
-  const [frame, setFrame] = useState(mirror?.features.frame ?? "");
-  const [lightThread, setLightThread] = useState(mirror?.features.lightThread ?? "");
-  const [backLight, setBackLight] = useState(mirror?.features.backLight ?? "");
-  const [price, setPrice] = useState<number>(mirror?.price ?? 0);
-  const [defaultHeight, setDefaultHeight] = useState<number>(mirror?.defaultHeight ?? 120);
-  const [defaultWidth, setDefaultWidth] = useState<number>(mirror?.defaultWidth ?? 80);
+  const [shapeId, setShapeId] = useState(mirror?.shape.id ?? shapes[0]?.id ?? "");
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(
+    mirror?.picture ?? null,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (mirror) {
       setName(mirror.name);
-      setShapeId(mirror.shape);
-      setFrame(mirror.features.frame ?? "");
-      setLightThread(mirror.features.lightThread ?? "");
-      setBackLight(mirror.features.backLight ?? "");
-      setDefaultHeight(mirror.defaultHeight);
-      setDefaultWidth(mirror.defaultWidth);
-      setPrice(mirror.price ?? 0);
+      setShapeId(mirror.shape.id);
+      setFilePreview(mirror.picture || null);
+      setFile(null);
+      setErrors({});
+    } else {
+      setName("");
+      setShapeId(shapes[0]?.id ?? "");
+      setFile(null);
+      setFilePreview(null);
       setErrors({});
     }
-  }, [mirror]);
-
-  const frameOptions = features.filter((feature) => feature.type === "frame");
-  const lightThreadOptions = features.filter((feature) => feature.type === "lightThread");
-  const backLightOptions = features.filter((feature) => feature.type === "backLight");
+  }, [mirror, shapes]);
 
   const clearFieldError = (field: string) => {
     setErrors((prev) => {
@@ -62,33 +56,29 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
     });
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFilePreview(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
+      clearFieldError("file");
+    }
+  };
+
   const isDirty = useMemo(() => {
     if (!mirror) return true;
     return (
       mirror.name !== name ||
-      mirror.shape !== shapeId ||
-      (mirror.features.frame ?? "") !== frame ||
-      (mirror.features.lightThread ?? "") !== lightThread ||
-      (mirror.features.backLight ?? "") !== backLight ||
-      (mirror.price ?? 0) !== price ||
-      mirror.defaultHeight !== defaultHeight ||
-      mirror.defaultWidth !== defaultWidth ||
-      description.trim().length > 0
+      mirror.shape.id !== shapeId ||
+      file !== null
     );
-  }, [
-    mirror,
-    name,
-    shapeId,
-    frame,
-    lightThread,
-    backLight,
-    price,
-    defaultHeight,
-    defaultWidth,
-    description,
-  ]);
+  }, [mirror, name, shapeId, file]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) {
       nextErrors.name = "نام آینه الزامی است.";
@@ -96,20 +86,8 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
     if (!shapeId) {
       nextErrors.shape = "انتخاب شکل الزامی است.";
     }
-    if (!frame) {
-      nextErrors.frame = "انتخاب قاب الزامی است.";
-    }
-    if (!lightThread) {
-      nextErrors.lightThread = "انتخاب نخ نوری الزامی است.";
-    }
-    if (defaultHeight <= 0) {
-      nextErrors.height = "ارتفاع باید بیشتر از صفر باشد.";
-    }
-    if (defaultWidth <= 0) {
-      nextErrors.width = "عرض باید بیشتر از صفر باشد.";
-    }
-    if (price < 0) {
-      nextErrors.price = "قیمت نمی‌تواند منفی باشد.";
+    if (mode === "create" && !file) {
+      nextErrors.file = "آپلود تصویر الزامی است.";
     }
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -121,16 +99,70 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
       return;
     }
     setErrors({});
-    addToast({
-      title: mode === "create" ? "آینه ایجاد شد" : "آینه به‌روزرسانی شد",
-      description: "پس از آماده شدن بک‌اند، با POST/PUT /mirrors ادغام کنید.",
-      variant: "success",
-    });
-    onClose();
+
+    try {
+      if (mode === "create") {
+        if (!file) {
+          addToast({
+            title: "خطا",
+            description: "آپلود تصویر الزامی است.",
+            variant: "error",
+          });
+          return;
+        }
+        await createMirror.mutateAsync({
+          name: name.trim(),
+          shape: shapeId,
+          file,
+        });
+        addToast({
+          title: "آینه ایجاد شد",
+          description: "آینه جدید با موفقیت ایجاد شد.",
+          variant: "success",
+        });
+      } else {
+        // Update mode
+        const updatePayload: {
+          name?: string;
+          shape?: string;
+          file?: File;
+        } = {};
+        if (mirror?.name !== name.trim()) {
+          updatePayload.name = name.trim();
+        }
+        if (mirror?.shape.id !== shapeId) {
+          updatePayload.shape = shapeId;
+        }
+        if (file) {
+          updatePayload.file = file;
+        }
+        await updateMirror.mutateAsync({
+          id: mirror!.id,
+          payload: updatePayload,
+        });
+        addToast({
+          title: "آینه به‌روزرسانی شد",
+          description: "تغییرات با موفقیت ذخیره شد.",
+          variant: "success",
+        });
+      }
+      onClose();
+    } catch (error) {
+      addToast({
+        title: "خطا",
+        description:
+          error instanceof Error
+            ? error.message
+            : "خطایی در ذخیره‌سازی رخ داد.",
+        variant: "error",
+      });
+    }
   };
 
   const getShapeName = (shapeId: string) =>
     shapes.find((shape) => shape.id === shapeId)?.name ?? "نامشخص";
+
+  const isLoading = createMirror.isPending || updateMirror.isPending;
 
   return (
     <motion.div
@@ -155,9 +187,6 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
             <SectionTitle as="h3">
               {mode === "create" ? "ایجاد قالب آینه" : "ویرایش قالب آینه"}
             </SectionTitle>
-            <BodyText>
-              فیلدها مطابق DTO فرم داده چند بخشی هستند. آپلود رسانه بعداً اضافه خواهد شد.
-            </BodyText>
           </div>
           <Button variant="ghost" onClick={onClose}>
             بستن
@@ -193,7 +222,7 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
                 setShapeId(value);
                 clearFieldError("shape");
               }}
-              options={shapes.map((shape: Shape) => ({
+              options={shapes.map((shape) => ({
                 value: shape.id,
                 label: `${shape.name}${shape.deformed ? " (بدشکل)" : ""}`,
               }))}
@@ -209,139 +238,79 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="mirror-height" requiredMarker>
-                ارتفاع پیش‌فرض (سانتی‌متر)
-              </Label>
-              <Input
-                id="mirror-height"
-                type="number"
-                value={defaultHeight}
-              onChange={(event) => {
-                setDefaultHeight(Number(event.target.value));
-                clearFieldError("height");
-              }}
-              />
-              {errors.height && (
-                <BodyText className="text-xs text-red-500">
-                  {errors.height}
-                </BodyText>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="mirror-width" requiredMarker>
-                عرض پیش‌فرض (سانتی‌متر)
-              </Label>
-              <Input
-                id="mirror-width"
-                type="number"
-                value={defaultWidth}
-              onChange={(event) => {
-                setDefaultWidth(Number(event.target.value));
-                clearFieldError("width");
-              }}
-              />
-              {errors.width && (
-                <BodyText className="text-xs text-red-500">
-                  {errors.width}
-                </BodyText>
-              )}
-            </div>
-          </div>
-
           <div className="flex flex-col gap-2">
-            <Label htmlFor="mirror-price">قیمت مرجع ($)</Label>
-            <Input
-              id="mirror-price"
-              type="number"
-              value={price}
-              onChange={(event) => {
-                setPrice(Number(event.target.value));
-                clearFieldError("price");
-              }}
-            />
-            {errors.price && (
-              <BodyText className="text-xs text-red-500">{errors.price}</BodyText>
+            <Label htmlFor="mirror-file" requiredMarker={mode === "create"}>
+              تصویر آینه
+            </Label>
+            <div className="flex flex-col gap-3">
+              {filePreview && (
+                <div className="relative h-40 w-full overflow-hidden rounded-xl border border-border bg-gradient-to-br from-layer-hover to-layer shadow-sm">
+                  <img
+                    src={filePreview}
+                    alt="Preview"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/60 to-transparent px-3 py-2 text-xs text-white">
+                    <span className="font-medium">
+                      {mode === "create" ? "پیش‌نمایش تصویر جدید" : "تصویر فعلی آینه"}
+                    </span>
+                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px]">
+                      برای تغییر، تصویر جدید انتخاب کنید
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="relative flex items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-layer/40 px-3 py-3 hover:border-primary/60 hover:bg-layer-hover/60 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-layer-hover/80 text-muted-foreground">
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.7}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <BodyText className="text-sm font-medium">
+                      {file ? "تصویر انتخاب شده" : "انتخاب یا کشیدن تصویر آینه"}
+                    </BodyText>
+                    <BodyText className="text-[11px] text-muted-foreground">
+                      {file
+                        ? file.name
+                        : "فرمت‌های مجاز: JPG, PNG • حداکثر حجم پیشنهادی: ۵ مگابایت"}
+                    </BodyText>
+                  </div>
+                </div>
+                <div className="pointer-events-none rounded-md border border-border bg-layer px-3 py-1.5 text-[11px] font-medium text-foreground">
+                  مرور فایل‌ها
+                </div>
+                <Input
+                  id="mirror-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </div>
+
+              <BodyText className="text-[11px] text-muted-foreground">
+                {mode === "create"
+                  ? "برای ایجاد آینه جدید، تصویر محصول را بارگذاری کنید."
+                  : "در صورت عدم انتخاب تصویر جدید، تصویر فعلی حفظ می‌شود."}
+              </BodyText>
+            </div>
+
+            {errors.file && (
+              <BodyText className="text-xs text-red-500">{errors.file}</BodyText>
             )}
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="mirror-frame" requiredMarker>
-                قاب پیش‌فرض
-              </Label>
-              <CustomSelect
-                value={frame}
-                onChange={(value) => {
-                  setFrame(value);
-                clearFieldError("frame");
-              }}
-                options={[
-                  { value: "", label: "انتخاب قاب" },
-                  ...frameOptions.map((option) => ({
-                    value: option.id,
-                    label: option.name,
-                  })),
-                ]}
-                placeholder="انتخاب قاب"
-              />
-              {errors.frame && (
-                <BodyText className="text-xs text-red-500">
-                  {errors.frame}
-                </BodyText>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="mirror-lightThread" requiredMarker>
-                نخ نوری پیش‌فرض
-              </Label>
-              <CustomSelect
-                value={lightThread}
-                onChange={(value) => {
-                  setLightThread(value);
-                clearFieldError("lightThread");
-              }}
-                options={[
-                  { value: "", label: "انتخاب نخ نوری" },
-                  ...lightThreadOptions.map((option) => ({
-                    value: option.id,
-                    label: option.name,
-                  })),
-                ]}
-                placeholder="انتخاب نخ نوری"
-              />
-              {errors.lightThread && (
-                <BodyText className="text-xs text-red-500">
-                  {errors.lightThread}
-                </BodyText>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="mirror-backLight">نور پس‌زمینه پیش‌فرض</Label>
-              <CustomSelect
-                value={backLight}
-                onChange={(value) => setBackLight(value)}
-                options={[
-                  { value: "", label: "هیچکدام" },
-                  ...backLightOptions.map((option) => ({
-                    value: option.id,
-                    label: option.name,
-                  })),
-                ]}
-                placeholder="هیچکدام"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="mirror-description">یادداشت‌های داخلی</Label>
-            <Textarea
-              id="mirror-description"
-              placeholder="توضیحات اختیاری برای اپراتورها."
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
           </div>
         </div>
 
@@ -352,9 +321,13 @@ export function MirrorDrawer({ mode, mirror, onClose }: MirrorDrawerProps) {
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={!isDirty}
+            disabled={!isDirty || isLoading || shapesLoading}
           >
-            {mode === "create" ? "ایجاد آینه" : "ذخیره تغییرات"}
+            {isLoading
+              ? "در حال ذخیره..."
+              : mode === "create"
+                ? "ایجاد آینه"
+                : "ذخیره تغییرات"}
           </Button>
         </div>
       </motion.div>
