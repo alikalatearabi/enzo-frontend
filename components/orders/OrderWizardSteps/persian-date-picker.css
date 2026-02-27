@@ -1,0 +1,185 @@
+/* Persian date picker – theme aligned with app (light/dark) */
+@import "react-multi-date-picker/styles/layouts/prime.css";
+
+/* Wrapper: calendar popup container */
+.persian-date-picker.rmdp-wrapper {
+  background-color: var(--layer);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  padding: 0.5rem;
+  direction: rtl;
+}
+
+.persian-date-picker.rmdp-wrapper.rmdp-shadow {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Prime layout overrides using theme vars */
+.persian-date-picker.rmdp-prime.rmdp-wrapper {
+  border-color: var(--border);
+}
+
+.persian-date-picker .rmdp-prime .rmdp-header,
+.persian-date-picker .rmdp-prime .rmdp-panel-header {
+  border-bottom-color: var(--border);
+}
+
+.persian-date-picker .rmdp-prime .rmdp-border-top,
+.persian-date-picker .rmdp-prime .rmdp-border-bottom,
+.persian-date-picker .rmdp-prime .rmdp-border-left,
+.persian-date-picker .rmdp-prime .rmdp-border-right {
+  border-color: var(--border) !important;
+}
+
+/* Calendar area */
+.persian-date-picker .rmdp-calendar {
+  padding: 0.25rem;
+}
+
+/* Week day labels */
+.persian-date-picker .rmdp-week-day {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Day cells */
+.persian-date-picker .rmdp-day {
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+.persian-date-picker .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: var(--layer-hover);
+  color: var(--foreground);
+}
+
+/* Today */
+.persian-date-picker .rmdp-day.rmdp-today span {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Selected day */
+.persian-date-picker .rmdp-day.rmdp-selected span:not(.highlight) {
+  background-color: var(--primary);
+  box-shadow: none;
+  color: var(--primary-foreground);
+}
+
+.persian-date-picker .rmdp-day.rmdp-deactive.rmdp-selected span {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  opacity: 0.85;
+}
+
+/* Inactive (other month) days */
+.persian-date-picker .rmdp-day.rmdp-deactive,
+.persian-date-picker .rmdp-day.rmdp-disabled {
+  color: var(--muted-foreground);
+}
+
+/* Header (month/year) */
+.persian-date-picker .rmdp-header {
+  border-bottom: 1px solid var(--border);
+  margin-top: 0.25rem;
+  padding: 0.5rem 0;
+}
+
+.persian-date-picker .rmdp-header-values {
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.persian-date-picker .rmdp-header-values span {
+  padding: 0 0.25rem;
+}
+
+/* Arrow buttons (month nav) */
+.persian-date-picker .rmdp-arrow {
+  border-color: var(--primary);
+}
+
+.persian-date-picker .rmdp-arrow-container {
+  background: transparent;
+  border: none;
+}
+
+.persian-date-picker .rmdp-arrow-container:hover {
+  background-color: var(--primary);
+  box-shadow: none;
+}
+
+.persian-date-picker .rmdp-arrow-container:hover .rmdp-arrow {
+  border-color: var(--primary-foreground);
+}
+
+.persian-date-picker .rmdp-arrow-container.disabled .rmdp-arrow,
+.persian-date-picker .rmdp-arrow-container.disabled:hover .rmdp-arrow {
+  border-color: var(--muted-foreground);
+}
+
+.persian-date-picker .rmdp-arrow-container.disabled:hover {
+  background-color: transparent;
+}
+
+/* Input field (ensure focus ring matches app) */
+.persian-date-picker .rmdp-input {
+  border-color: var(--border);
+  border-radius: 0.375rem;
+  background-color: var(--layer);
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+.persian-date-picker .rmdp-input:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.persian-date-picker .rmdp-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Popper arrow (dropdown arrow) */
+.persian-date-picker.ep-arrow[direction="bottom"]::after,
+.persian-date-picker .rmdp-ep-arrow[direction="bottom"]::after {
+  background-color: var(--layer);
+  border-color: var(--border);
+}
+
+.persian-date-picker .rmdp-ep-border::after {
+  border-color: var(--border);
+}
+
+.persian-date-picker .rmdp-ep-shadow::after {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Month/Year picker panels */
+.persian-date-picker .rmdp-month-picker,
+.persian-date-picker .rmdp-year-picker {
+  background-color: var(--layer);
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.persian-date-picker .rmdp-ym .rmdp-day span {
+  border-radius: 0.375rem;
+}
+
+.persian-date-picker .rmdp-ym .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: var(--layer-hover);
+}
+
+.persian-date-picker .rmdp-ym .rmdp-day.rmdp-selected span {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.persian-date-picker .rmdp-ym .rmdp-day.rmdp-today span {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}

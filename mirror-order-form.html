@@ -272,7 +272,7 @@
         <h1>فرم سفارش آینه</h1>
 
         <!-- Customer and Order Information -->
-        <div class="section">
+        <div class="section" style="margin-bottom: 25px;">
             <div class="row">
                 <div class="field-group">
                     <label>نام مشتری:</label>
@@ -290,18 +290,18 @@
         </div>
 
         <!-- Mirror Specifications -->
-        <div class="section">
+        <div class="section" style="margin-bottom: 25px;">
             <div class="row">
                 <div class="field-group">
                     <label>ضخامت:</label>
                     <div class="radio-group">
                         <div class="radio-option">
-                            <input type="radio" name="thickness" value="6mm" id="thick-6">
                             <label for="thick-6">6mm</label>
+                            <input type="radio" name="thickness" value="6mm" id="thick-6">
                         </div>
                         <div class="radio-option">
-                            <input type="radio" name="thickness" value="4mm" id="thick-4">
                             <label for="thick-4">4mm</label>
+                            <input type="radio" name="thickness" value="4mm" id="thick-4">
                         </div>
                     </div>
                 </div>
@@ -338,26 +338,26 @@
         </div>
 
         <!-- Edge Processing -->
-        <div class="section">
-            <div class="row">
-                <div class="field-group">
+        <div class="section" style="margin-bottom: 25px;">
+            <div class="row" style="margin-bottom: 15px;">
+                <div class="field-group" style="width: 100%;">
                     <label>نوع ابزار:</label>
-                    <div class="radio-group">
+                    <div class="radio-group" style="justify-content: space-between; width: 100%;">
                         <div class="radio-option">
-                            <input type="radio" name="tool-type" value="cut" id="tool-cut">
                             <label for="tool-cut">فقط برش</label>
+                            <input type="radio" name="tool-type" value="cut" id="tool-cut">
                         </div>
                         <div class="radio-option">
-                            <input type="radio" name="tool-type" value="bevel" id="tool-bevel">
                             <label for="tool-bevel">تراش</label>
+                            <input type="radio" name="tool-type" value="bevel" id="tool-bevel">
                         </div>
                         <div class="radio-option">
-                            <input type="radio" name="tool-type" value="matte" id="tool-matte">
                             <label for="tool-matte">لول مات</label>
+                            <input type="radio" name="tool-type" value="matte" id="tool-matte">
                         </div>
                         <div class="radio-option">
-                            <input type="radio" name="tool-type" value="polished" id="tool-polished">
                             <label for="tool-polished">لول براق</label>
+                            <input type="radio" name="tool-type" value="polished" id="tool-polished">
                         </div>
                     </div>
                 </div>
@@ -371,12 +371,12 @@
                     <label>گوشه (R):</label>
                     <div class="checkbox-group">
                         <div class="checkbox-option">
-                            <input type="checkbox" id="corner-has">
                             <label for="corner-has">دارد</label>
+                            <input type="checkbox" id="corner-has">
                         </div>
                         <div class="checkbox-option">
-                            <input type="checkbox" id="corner-not">
                             <label for="corner-not">ندارد</label>
+                            <input type="checkbox" id="corner-not">
                         </div>
                     </div>
                     <div class="size-input" style="margin-right: 20px;">
@@ -397,12 +397,12 @@
                         <label>سند بلاست:</label>
                         <div class="checkbox-group">
                             <div class="checkbox-option">
-                                <input type="checkbox" id="sandblast-has">
                                 <label for="sandblast-has">دارد</label>
+                                <input type="checkbox" id="sandblast-has">
                             </div>
                             <div class="checkbox-option">
-                                <input type="checkbox" id="sandblast-not">
                                 <label for="sandblast-not">ندارد</label>
+                                <input type="checkbox" id="sandblast-not">
                             </div>
                         </div>
                     </div>
@@ -416,7 +416,7 @@
 
                     <div class="feature-item">
                         <label>توضيحات:</label>
-                        <textarea class="text-area" placeholder=""></textarea>
+                        <textarea class="text-area" placeholder="" style="min-height: 120px;"></textarea>
                     </div>
 
                     <div class="feature-item">
@@ -433,12 +433,12 @@
                         <label>تاچ:</label>
                         <div class="checkbox-group">
                             <div class="checkbox-option">
-                                <input type="checkbox" id="touch-has">
                                 <label for="touch-has">دارد</label>
+                                <input type="checkbox" id="touch-has">
                             </div>
                             <div class="checkbox-option">
-                                <input type="checkbox" id="touch-not">
                                 <label for="touch-not">ندارد</label>
+                                <input type="checkbox" id="touch-not">
                             </div>
                         </div>
                         <div class="feature-details">نوع تاچ: فول نمایشگردار</div>
@@ -449,12 +449,12 @@
                         <label>لوگو:</label>
                         <div class="checkbox-group">
                             <div class="checkbox-option">
-                                <input type="checkbox" id="logo-has">
                                 <label for="logo-has">دارد</label>
+                                <input type="checkbox" id="logo-has">
                             </div>
                             <div class="checkbox-option">
-                                <input type="checkbox" id="logo-not">
                                 <label for="logo-not">ندارد</label>
+                                <input type="checkbox" id="logo-not">
                             </div>
                         </div>
                         <div class="feature-details">نوع لوگو: Enzo</div>
@@ -465,59 +465,54 @@
                         <label>پیوست نقشه / عکس:</label>
                         <div class="checkbox-group">
                             <div class="checkbox-option">
-                                <input type="checkbox" id="attach-has">
                                 <label for="attach-has">دارد</label>
+                                <input type="checkbox" id="attach-has">
                             </div>
                             <div class="checkbox-option">
-                                <input type="checkbox" id="attach-not">
                                 <label for="attach-not">ندارد</label>
+                                <input type="checkbox" id="attach-not">
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Bottom Section -->
-        <div class="section">
-            <div class="product-section">
-                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 0;">
-                    <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 10px 0;">
-                        <div class="field-group" style="flex-direction: column; align-items: flex-start;">
+                    <div style="border-top: 1px solid #ddd; margin: 10px 0;"></div>
+
+                    <div class="feature-item">
+                        <div class="field-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 10px;">
                             <label>آینه بک لایت (محصول کامل)</label>
                         </div>
-                        <div class="field-group">
+                        <div class="field-group" style="margin-bottom: 10px;">
                             <label>کد محصول:</label>
                             <input type="text" placeholder="">
                         </div>
-                        <div class="field-group">
-                            <label>رنگ نور:</label>
-                            <input type="text" placeholder="">
+                        <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 10px;">
+                            <div class="field-group">
+                                <label>رنگ نور:</label>
+                                <input type="text" placeholder="">
+                            </div>
+                            <div class="field-group" style="transform: translateY(5px);">
+                                <label>پد ضد بخار:</label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-option">
+                                        <label for="antifog-has">دارد</label>
+                                        <input type="checkbox" id="antifog-has">
+                                    </div>
+                                    <div class="checkbox-option">
+                                        <label for="antifog-not">ندارد</label>
+                                        <input type="checkbox" id="antifog-not">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="field-group">
                             <label>توضيحات:</label>
                             <input type="text" placeholder="">
                         </div>
                     </div>
-                    <div></div>
-                    <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px;">
-                        <div class="field-group" style="flex-direction: column; align-items: flex-start;">
-                            <label>پد ضد بخار:</label>
-                            <div class="checkbox-group" style="margin-top: 5px;">
-                                <div class="checkbox-option">
-                                    <input type="checkbox" id="antifog-has">
-                                    <label for="antifog-has">دارد</label>
-                                </div>
-                                <div class="checkbox-option">
-                                    <input type="checkbox" id="antifog-not">
-                                    <label for="antifog-not">ندارد</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
+
 
         <div class="export-button">
             <button onclick="exportToPDF()">خروجی PDF</button>

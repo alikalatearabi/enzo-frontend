@@ -1,4 +1,17 @@
 /**
+ * Converts Persian/Arabic digits in a string to English digits (for API payloads).
+ * Use for date strings (e.g. YYYY-MM-DD) so the backend receives Gregorian with English numerals.
+ */
+export function toEnglishDigits(str: string | null | undefined): string {
+  if (str == null || str === "") return "";
+  const persian = "۰۱۲۳۴۵۶۷۸۹";
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  return str
+    .replace(/[۰-۹]/g, (c) => String(persian.indexOf(c)))
+    .replace(/[٠-٩]/g, (c) => String(arabic.indexOf(c)));
+}
+
+/**
  * Converts English digits to Persian numerals
  * @param value - The number or string to convert
  * @returns String with Persian numerals

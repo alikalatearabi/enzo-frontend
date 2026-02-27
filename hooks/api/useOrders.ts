@@ -11,9 +11,11 @@ import {
   deleteOrder as deleteOrderApi,
   getOrders,
   getOrderById,
+  getOrdersByInvoiceId,
   createOrder as createOrderApi,
   updateOrder as updateOrderApi,
   updateOrderStatus as updateOrderStatusApi,
+  assignOrderToInvoice as assignOrderToInvoiceApi,
 } from "@/lib/api/orders";
 
 export function useOrders() {
@@ -54,6 +56,14 @@ export function useOrder(id: string | null) {
   });
 }
 
+export function useOrdersByInvoiceId(invoiceId: string | null) {
+  return useQuery<OrderRoFull[]>({
+    queryKey: ["orders", "by-invoice", invoiceId],
+    queryFn: () => getOrdersByInvoiceId(invoiceId as string),
+    enabled: !!invoiceId,
+  });
+}
+
 export function useCreateOrder() {
   const queryClient = useQueryClient();
 
@@ -61,6 +71,27 @@ export function useCreateOrder() {
     mutationFn: (payload: CreateOrderPayload) => createOrderApi(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
+}
+
+export function useAssignOrderToInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      invoiceId,
+    }: {
+      orderId: string;
+      invoiceId: string;
+    }) => assignOrderToInvoiceApi(orderId, invoiceId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({
+        queryKey: ["orders", "by-invoice", variables.invoiceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
     },
   });
 }

@@ -3,16 +3,25 @@
 import { useEffect } from "react";
 import { Button } from "./button";
 import { BodyText } from "./typography";
+import { cn } from "../../lib/utils/cn";
 
 type DialogProps = {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
+  contentClassName?: string;
   children?: React.ReactNode;
 };
 
-export function Dialog({ open, onClose, title, description, children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  contentClassName,
+  children,
+}: DialogProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -28,11 +37,14 @@ export function Dialog({ open, onClose, title, description, children }: DialogPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md rounded-lg border border-border bg-layer p-6 shadow-xl"
+        className={cn(
+          "relative w-full rounded-lg border border-border bg-layer p-6 shadow-xl",
+          contentClassName ?? "max-w-md",
+        )}
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >

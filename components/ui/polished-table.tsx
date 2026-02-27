@@ -69,12 +69,14 @@ export function PolishedTableBody({ children }: PolishedTableBodyProps) {
 type PolishedTableRowProps = {
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 };
 
-export function PolishedTableRow({ children, className }: PolishedTableRowProps) {
+export function PolishedTableRow({ children, className, onClick }: PolishedTableRowProps) {
   return (
     <TableRow
-      className={`transition-colors hover:bg-layer-hover/30 border-b border-border/50 last:border-b-0 ${className || ""}`}
+      className={`transition-colors hover:bg-layer-hover/30 border-b border-border/50 last:border-b-0 ${className || ""} ${onClick ? "cursor-pointer" : ""}`}
+      onClick={onClick}
     >
       {children}
     </TableRow>
@@ -85,18 +87,23 @@ type PolishedTableCellProps = {
   children: React.ReactNode;
   align?: "left" | "right" | "center";
   className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 };
 
 export function PolishedTableCell({
   children,
   align = "right",
   className,
+  onClick,
 }: PolishedTableCellProps) {
   const alignClass =
     align === "left" ? "text-left" : align === "center" ? "text-center" : "text-right";
 
   return (
-    <TableCell className={`${alignClass} py-4 ${className || ""}`}>
+    <TableCell
+      className={`${alignClass} py-4 ${className || ""}`}
+      onClick={onClick}
+    >
       {children}
     </TableCell>
   );

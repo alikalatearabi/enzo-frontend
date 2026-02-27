@@ -1,48 +1,22 @@
 "use client";
 
+import { useMemo } from "react";
+
+import { useUsers } from "@/hooks/api/useUsers";
 import { toPersianNumber } from "../../../lib/utils/numbers";
 import { SectionTitle } from "../../ui/typography";
 import { statusOptions } from "./constants";
-import { StepProps } from "./types";
+import { ReviewStepProps } from "./types";
 
-type FeatureOption = {
-  id: string;
-  name: string;
-};
-
-type ReviewStepProps = StepProps & {
-  selectedMirror?: { name: string };
-  selectedCustomer?: { name: string };
-  selectedCutter?: { name: string };
-  selectedFrame?: FeatureOption;
-  selectedLightThread?: FeatureOption;
-  selectedBackLight?: FeatureOption;
-  selectedZoom?: FeatureOption;
-  selectedSandblast?: FeatureOption;
-  selectedThickness?: FeatureOption;
-  submitted: boolean;
-};
-
-function SummaryRow({
-  label,
-  value,
-}: {
-  label: string;
-  value?: string | number | null;
-}) {
-  const displayValue = typeof value === "number" ? toPersianNumber(value) : value;
-  return (
-    <div className="flex justify-between text-sm" dir="rtl">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-foreground">
-        {displayValue ?? "—"}
-      </span>
-    </div>
-  );
-}
+import { User } from "@/lib/api/users";
+import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { SummaryRow } from "./utils";
+import { Input } from "@/components/ui/input";
 
 export function ReviewStep({
   data,
+  setField,
   selectedMirror,
   selectedCustomer,
   selectedCutter,
@@ -52,10 +26,76 @@ export function ReviewStep({
   selectedZoom,
   selectedSandblast,
   selectedThickness,
-  submitted,
+  invoiceContextLabel,
 }: ReviewStepProps) {
+
+  const { data: users, isLoading, error } = useUsers();
+
+  const customers = useMemo(() => users.filter((user: User) => user.role === "CUSTOMER"), [users])
+  const cutters = useMemo(() => users.filter((user: User) => user.role === "CUTTER"), [users])
+
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error loading users</div>
+
+  const dimentionValue = `${data.height ? toPersianNumber(data.height) : "-"} x ${data.width ? toPersianNumber(data.width) : "-"} سانتی‌متر`
+  const stateValue = statusOptions.find((option) => option.value === data.status)?.label
+
   return (
     <div className="grid gap-4">
+      {invoiceContextLabel ? (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          {invoiceContextLabel}
+        </div>
+      ) : (
+        <div className="grid gap-4 grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="invoiceNumber" requiredMarker>
+              شماره صورت حساب
+            </Label>
+            <Input
+              id="invoiceNumber"
+              type="number"
+              value={data.invoiceNumber ?? ""}
+              onChange={(event) => setField("invoiceNumber", Number(event.target.value))}
+              placeholder="شماره صورت حساب را وارد کنید"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="customer" requiredMarker>
+              مشتری
+            </Label>
+            <CustomSelect
+              value={data.customer?._id ?? ""}
+              onChange={(value) => setField("customer", users.find((u: User) => u._id === value))}
+              options={[
+                { value: "", label: "انتخاب مشتری" },
+                ...customers.map((customer: User) => ({
+                  value: customer._id,
+                  label: customer.name,
+                })),
+              ]}
+              placeholder="انتخاب مشتری"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="cutter" requiredMarker>
+              برشکار
+            </Label>
+            <CustomSelect
+              value={data.cutter?._id ?? ""}
+              onChange={(value) => setField("cutter", users.find((u: User) => u._id === value))}
+              options={[
+                { value: "", label: "انتخاب برشکار" },
+                ...cutters.map((cutter: User) => ({
+                  value: cutter._id,
+                  label: cutter.name,
+                })),
+              ]}
+              placeholder="انتخاب برشکار"
+            />
+          </div>
+        </div>
+      )}
       <div className="rounded-lg border border-border bg-layer p-4">
         <SectionTitle as="h3">خلاصه</SectionTitle>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -70,23 +110,12 @@ export function ReviewStep({
           <SummaryRow label="ضخامت" value={selectedThickness?.name} />
           <SummaryRow label="ماژول‌ها" value={data.mirrorModule.length} />
           <SummaryRow label="تعداد" value={data.count} />
-          <SummaryRow
-            label="ابعاد"
-            value={`${data.height ? toPersianNumber(data.height) : "-"} x ${data.width ? toPersianNumber(data.width) : "-"} سانتی‌متر`}
-          />
+          <SummaryRow label="ابعاد" value={dimentionValue} />
           <SummaryRow label="تاریخ شروع" value={data.startDate} />
           <SummaryRow label="تاریخ پایان" value={data.endDate} />
-          <SummaryRow
-            label="وضعیت"
-            value={statusOptions.find((option) => option.value === data.status)?.label}
-          />
+          <SummaryRow label="وضعیت" value={stateValue} />
         </div>
       </div>
-      {submitted && (
-        <div className="rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-primary">
-          پیش‌نویس سفارش آماده شد. ارسال شبیه‌سازی شده را با فراخوانی API واقعی جایگزین کنید.
-        </div>
-      )}
     </div>
   );
 }

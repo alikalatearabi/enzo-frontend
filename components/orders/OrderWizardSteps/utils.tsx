@@ -1,3 +1,4 @@
+import { toPersianNumber } from "@/lib/utils/numbers";
 import { OrderWizardData, OrderWizardStepId } from "../../../hooks/orders/useOrderWizard";
 
 export function validateStep(
@@ -7,9 +8,18 @@ export function validateStep(
   const errors: Record<string, string> = {};
 
   switch (stepId) {
-    case "participants": {
-      if (!data.customer) errors.customer = "مشتری الزامی است.";
-      if (!data.cutter) errors.cutter = "برشکار الزامی است.";
+    case "invoice": {
+      if (data.invoiceChoice === "existing") {
+        if (!data.selectedExistingInvoiceId)
+          errors.selectedExistingInvoiceId = "یک صورت‌حساب انتخاب کنید.";
+      } else if (data.invoiceChoice === "new") {
+        if (!data.invoiceNumber && data.invoiceNumber !== 0)
+          errors.invoiceNumber = "شماره صورت‌حساب الزامی است.";
+        if (!data.customer?._id) errors.customer = "مشتری الزامی است.";
+        if (!data.cutter?._id) errors.cutter = "برشکار الزامی است.";
+      } else {
+        errors.invoiceChoice = "صورت‌حساب جدید یا موجود را انتخاب کنید.";
+      }
       break;
     }
     case "mirror": {
@@ -20,16 +30,15 @@ export function validateStep(
       break;
     }
     case "frame": {
-      if (!data.frame) errors.frame = "قاب الزامی است.";
       break;
     }
     case "sandblast": {
-      // Optional step - no validation needed
+      if (!data.sandblast) errors.sandblast = "سندبلاست الزامی است.";
       break;
     }
     case "mirrorComponents": {
-      if (!data.lightThread) errors.lightThread = "نخ نوری الزامی است.";
       if (!data.thickness) errors.thickness = "ضخامت الزامی است.";
+      if (!data.logo || !data.logo.trim()) errors.logo = "لوگو الزامی است.";
       break;
     }
     case "schedule": {
@@ -45,5 +54,17 @@ export function validateStep(
   }
 
   return { isValid: Object.keys(errors).length === 0, errors };
+}
+
+export function SummaryRow({ label, value }: { label: string; value?: string | number | null }) {
+  const displayValue = typeof value === "number" ? toPersianNumber(value) : value;
+  return (
+    <div className="flex justify-between text-sm" dir="rtl">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">
+        {displayValue ?? "—"}
+      </span>
+    </div>
+  )
 }
 

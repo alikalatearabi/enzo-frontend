@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { CustomSelect } from "../../ui/custom-select";
-import { BodyText, MutedText } from "../../ui/typography";
+import { BodyText } from "../../ui/typography";
+import { useLogos } from "../../../hooks/api/useLogos";
 import { StepProps } from "./types";
 
 type FeatureOption = {
@@ -31,10 +31,17 @@ export function MirrorComponentsStep({
   moduleOptions,
   onToggleModule,
 }: MirrorComponentsStepProps) {
+  const { data: logos = [] } = useLogos();
+
+  const logoOptions = logos.map((logo) => ({
+    value: logo.id,
+    label: logo.logoType,
+  }));
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="lightThread" requiredMarker>
+        <Label htmlFor="lightThread">
           نخ نوری
         </Label>
         <CustomSelect
@@ -104,6 +111,25 @@ export function MirrorComponentsStep({
         {errors.thickness && (
           <BodyText className="text-xs text-red-500">
             {errors.thickness}
+          </BodyText>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="logo" requiredMarker>
+          لوگو
+        </Label>
+        <CustomSelect
+          value={data.logo ?? ""}
+          onChange={(value) => setField("logo", value || undefined)}
+          options={[
+            { value: "", label: "انتخاب لوگو" },
+            ...logoOptions,
+          ]}
+          placeholder="انتخاب لوگو"
+        />
+        {errors.logo && (
+          <BodyText className="text-xs text-red-500">
+            {errors.logo}
           </BodyText>
         )}
       </div>

@@ -11,7 +11,7 @@ export const NAV_SECTIONS = [
   {
     label: "عملیات",
     items: [
-      { label: "سفارش‌ها", href: "/orders" },
+      { label: "صورت‌حساب‌ها", href: "/invoices" },
       { label: "کاربران", href: "/users" },
       { label: "قیمت‌گذاری", href: "/pricing" },
       { label: "ابزارها و گزارش‌گیری", href: "/tools" },

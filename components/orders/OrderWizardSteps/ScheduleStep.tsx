@@ -1,11 +1,30 @@
 "use client";
 
-import { Input } from "../../ui/input";
+import DateObject from "react-date-object";
+import DatePicker from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 import { Label } from "../../ui/label";
 import { CustomSelect } from "../../ui/custom-select";
 import { BodyText } from "../../ui/typography";
 import { statusOptions } from "./constants";
 import { StepProps } from "./types";
+import { toEnglishDigits } from "../../../lib/utils/numbers";
+import "./persian-date-picker.css";
+
+function toGregorianYYYYMMDD(date: DateObject | null): string | undefined {
+  if (!date) return undefined;
+  const d = new DateObject(date);
+  if (!d.isValid) return undefined;
+  d.convert(); // to Gregorian
+  return toEnglishDigits(d.format("YYYY-MM-DD"));
+}
+
+function fromGregorianString(value: string | undefined): DateObject | undefined {
+  if (!value) return undefined;
+  const d = new DateObject(value);
+  return d.isValid ? d : undefined;
+}
 
 export function ScheduleStep({ data, errors, setField }: StepProps) {
   return (
@@ -14,11 +33,18 @@ export function ScheduleStep({ data, errors, setField }: StepProps) {
         <Label htmlFor="startDate" requiredMarker>
           تاریخ شروع
         </Label>
-        <Input
+        <DatePicker
           id="startDate"
-          type="date"
-          value={data.startDate ?? ""}
-          onChange={(event) => setField("startDate", event.target.value)}
+          calendar={persian}
+          locale={persian_fa}
+          value={fromGregorianString(data.startDate)}
+          onChange={(d) => setField("startDate", toGregorianYYYYMMDD(d as DateObject | null))}
+          format="YYYY/MM/DD"
+          className="persian-date-picker rmdp-prime"
+          containerClassName="w-full"
+          inputClass="flex h-10 w-full rounded-md border border-border bg-layer px-3 text-sm text-foreground shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface focus:ring-primary outline-none placeholder:text-muted-foreground"
+          placeholder="انتخاب تاریخ"
+          calendarPosition="bottom-right"
         />
         {errors.startDate && (
           <BodyText className="text-xs text-red-500">
@@ -30,11 +56,18 @@ export function ScheduleStep({ data, errors, setField }: StepProps) {
         <Label htmlFor="endDate" requiredMarker>
           تاریخ پایان
         </Label>
-        <Input
+        <DatePicker
           id="endDate"
-          type="date"
-          value={data.endDate ?? ""}
-          onChange={(event) => setField("endDate", event.target.value)}
+          calendar={persian}
+          locale={persian_fa}
+          value={fromGregorianString(data.endDate)}
+          onChange={(d) => setField("endDate", toGregorianYYYYMMDD(d as DateObject | null))}
+          format="YYYY/MM/DD"
+          className="persian-date-picker rmdp-prime"
+          containerClassName="w-full"
+          inputClass="flex h-10 w-full rounded-md border border-border bg-layer px-3 text-sm text-foreground shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface focus:ring-primary outline-none placeholder:text-muted-foreground"
+          placeholder="انتخاب تاریخ"
+          calendarPosition="bottom-right"
         />
         {errors.endDate && (
           <BodyText className="text-xs text-red-500">

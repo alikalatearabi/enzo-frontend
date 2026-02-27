@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import type { FeatureModule } from "../../lib/api/features";
+import type { Logo, LogoPositionValue } from "../../lib/api/logo";
+import { LogoPosition } from "../../lib/api/logo";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -11,18 +13,32 @@ import { Textarea } from "../ui/textarea";
 import { BodyText, SectionTitle } from "../ui/typography";
 import { useToast } from "../ui/feedback/ToastProvider";
 
+export type FeatureModuleSubmitPayload = {
+  kind: "feature";
+  name: string;
+  type: FeatureModule["type"];
+  code?: string;
+  layerCount?: number;
+  notes?: string;
+};
+
+export type LogoSubmitPayload = {
+  kind: "logo";
+  logoType: string;
+  active: boolean;
+  position: LogoPositionValue;
+};
+
+export type CatalogItemSubmitPayload = FeatureModuleSubmitPayload | LogoSubmitPayload;
+
 type FeatureModuleDrawerProps = {
   mode: "create" | "edit";
   feature?: FeatureModule;
+  logo?: Logo;
   onClose: () => void;
-  onSubmit: (payload: {
-    name: string;
-    type: FeatureModule["type"];
-    code?: string;
-    layerCount?: number;
-    notes?: string;
-  }) => Promise<void>;
+  onSubmit: (payload: CatalogItemSubmitPayload) => Promise<void>;
   existingModules: FeatureModule[];
+  existingLogos?: Logo[];
   isLoading?: boolean;
 };
 
@@ -34,23 +50,45 @@ const typeOptions = [
   { value: "thickness", label: "ضخامت" },
   { value: "sandblast", label: "سندبلاست" },
   { value: "lol", label: "LOL" },
+  { value: "logo", label: "لوگو" },
+];
+
+const positionOptions: { value: LogoPositionValue; label: string }[] = [
+  { value: LogoPosition.TOP_LEFT, label: "بالا چپ" },
+  { value: LogoPosition.TOP_CENTER, label: "بالا وسط" },
+  { value: LogoPosition.TOP_RIGHT, label: "بالا راست" },
+  { value: LogoPosition.CENTER_LEFT, label: "وسط چپ" },
+  { value: LogoPosition.CENTER, label: "وسط" },
+  { value: LogoPosition.CENTER_RIGHT, label: "وسط راست" },
+  { value: LogoPosition.BOTTOM_LEFT, label: "پایین چپ" },
+  { value: LogoPosition.BOTTOM_CENTER, label: "پایین وسط" },
+  { value: LogoPosition.BOTTOM_RIGHT, label: "پایین راست" },
 ];
 
 export function FeatureModuleDrawer({
   mode,
   feature,
+  logo,
   onClose,
   onSubmit,
   existingModules,
+  existingLogos = [],
   isLoading = false,
 }: FeatureModuleDrawerProps) {
   const { addToast } = useToast();
   const [name, setName] = useState(feature?.name ?? "");
-  const [type, setType] = useState(feature?.type ?? "frame");
+  const [type, setType] = useState<string>(feature?.type ?? logo ? "logo" : "frame");
   const [code, setCode] = useState(feature?.code ?? "");
   const [layerCount, setLayerCount] = useState(feature?.layerCount ?? 1);
   const [notes, setNotes] = useState(feature?.notes ?? "");
+  const [logoType, setLogoType] = useState(logo?.logoType ?? "ENZO");
+  const [active, setActive] = useState(logo?.active ?? false);
+  const [position, setPosition] = useState<LogoPositionValue>(
+    logo?.position ?? LogoPosition.CENTER,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const isLogo = type === "logo";
 
   useEffect(() => {
     if (feature) {
@@ -63,6 +101,16 @@ export function FeatureModuleDrawer({
     }
   }, [feature]);
 
+  useEffect(() => {
+    if (logo) {
+      setType("logo");
+      setLogoType(logo.logoType);
+      setActive(logo.active);
+      setPosition(logo.position);
+      setErrors({});
+    }
+  }, [logo]);
+
   const clearFieldError = (field: string) => {
     setErrors((prev) => {
       if (!(field in prev)) return prev;
@@ -73,6 +121,13 @@ export function FeatureModuleDrawer({
   };
 
   const isDirty = useMemo(() => {
+    if (logo) {
+      return (
+        logo.logoType !== logoType ||
+        logo.active !== active ||
+        logo.position !== position
+      );
+    }
     if (!feature) return true;
     return (
       feature.name !== name ||
@@ -81,9 +136,33 @@ export function FeatureModuleDrawer({
       (feature.layerCount ?? 1) !== layerCount ||
       (feature.notes ?? "") !== notes
     );
-  }, [feature, name, type, code, layerCount, notes]);
+  }, [feature, logo, name, type, code, layerCount, notes, logoType, active, position]);
 
   const handleSubmit = async () => {
+    if (isLogo) {
+      const nextErrors: Record<string, string> = {};
+      if (!logoType.trim()) {
+        nextErrors.logoType = "نوع لوگو الزامی است.";
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors);
+        addToast({
+          title: "اعتبارسنجی ناموفق",
+          description: "لطفاً فیلدهای برجسته شده را پر کنید.",
+          variant: "error",
+        });
+        return;
+      }
+      setErrors({});
+      await onSubmit({
+        kind: "logo",
+        logoType: logoType.trim() || "ENZO",
+        active,
+        position,
+      });
+      return;
+    }
+
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) {
       nextErrors.name = "نام ویژگی الزامی است.";
@@ -118,6 +197,7 @@ export function FeatureModuleDrawer({
     }
     setErrors({});
     await onSubmit({
+      kind: "feature",
       name,
       type: type as FeatureModule["type"],
       code,
@@ -125,6 +205,15 @@ export function FeatureModuleDrawer({
       notes,
     });
   };
+
+  const title =
+    mode === "create"
+      ? isLogo
+        ? "افزودن لوگو"
+        : "افزودن ماژول ویژگی"
+      : isLogo
+        ? "ویرایش لوگو"
+        : "ویرایش ماژول ویژگی";
 
   return (
     <motion.div
@@ -146,9 +235,7 @@ export function FeatureModuleDrawer({
       >
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <SectionTitle as="h3">
-              {mode === "create" ? "افزودن ماژول ویژگی" : "ویرایش ماژول ویژگی"}
-            </SectionTitle>
+            <SectionTitle as="h3">{title}</SectionTitle>
           </div>
           <Button variant="ghost" onClick={onClose}>
             بستن
@@ -157,86 +244,133 @@ export function FeatureModuleDrawer({
 
         <div className="grid gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="feature-name" requiredMarker>
-              نام
-            </Label>
-            <Input
-              id="feature-name"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                clearFieldError("name");
-              }}
-              placeholder="قاب لبه کربن"
-            />
-            {errors.name && (
-              <BodyText className="text-xs text-red-500">
-                {errors.name}
-              </BodyText>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="feature-type" requiredMarker>
+            <Label htmlFor="catalog-type" requiredMarker>
               نوع
             </Label>
             <CustomSelect
               value={type}
               onChange={(value) => {
-                setType(value as FeatureModule["type"]);
+                setType(value);
                 clearFieldError("type");
               }}
               options={typeOptions}
+              disabled={mode === "edit"}
             />
-            <BodyText className="text-xs">
-              هر نوع به منبع REST خودش نگاشت می‌شود (frames، lightThreads و غیره).
-            </BodyText>
-            {errors.type && (
-              <BodyText className="text-xs text-red-500">
-                {errors.type}
+            {mode === "edit" && (feature || logo) && (
+              <BodyText className="text-xs text-muted-foreground">
+                در حالت ویرایش نوع قابل تغییر نیست.
               </BodyText>
+            )}
+            {errors.type && (
+              <BodyText className="text-xs text-red-500">{errors.type}</BodyText>
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="feature-code">کد (اختیاری)</Label>
-              <Input
-                id="feature-code"
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                placeholder="SB-FT-001"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="feature-layerCount">تعداد لایه</Label>
-              <Input
-                id="feature-layerCount"
-                type="number"
-                min={1}
-                value={layerCount}
-                onChange={(event) => {
-                  setLayerCount(Number(event.target.value));
-                  clearFieldError("layerCount");
-                }}
-              />
-              {errors.layerCount && (
-                <BodyText className="text-xs text-red-500">
-                  {errors.layerCount}
-                </BodyText>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="feature-notes">یادداشت‌ها</Label>
-            <Textarea
-              id="feature-notes"
-              placeholder="یادداشت‌های داخلی و وابستگی‌ها."
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-          </div>
+          {isLogo ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="logo-type" requiredMarker>
+                  نوع لوگو
+                </Label>
+                <Input
+                  id="logo-type"
+                  value={logoType}
+                  onChange={(e) => {
+                    setLogoType(e.target.value);
+                    clearFieldError("logoType");
+                  }}
+                  placeholder="مثال: ENZO"
+                />
+                {errors.logoType && (
+                  <BodyText className="text-xs text-red-500">
+                    {errors.logoType}
+                  </BodyText>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="logo-active">فعال</Label>
+                <CustomSelect
+                  value={active ? "true" : "false"}
+                  onChange={(value) => setActive(value === "true")}
+                  options={[
+                    { value: "true", label: "بله" },
+                    { value: "false", label: "خیر" },
+                  ]}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="logo-position">موقعیت</Label>
+                <CustomSelect
+                  value={position}
+                  onChange={(value) =>
+                    setPosition(value as LogoPositionValue)
+                  }
+                  options={positionOptions}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="feature-name" requiredMarker>
+                  نام
+                </Label>
+                <Input
+                  id="feature-name"
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    clearFieldError("name");
+                  }}
+                  placeholder="قاب لبه کربن"
+                  disabled={mode === "edit" && !!logo}
+                />
+                {errors.name && (
+                  <BodyText className="text-xs text-red-500">
+                    {errors.name}
+                  </BodyText>
+                )}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="feature-code">کد (اختیاری)</Label>
+                  <Input
+                    id="feature-code"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    placeholder="SB-FT-001"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="feature-layerCount">تعداد لایه</Label>
+                  <Input
+                    id="feature-layerCount"
+                    type="number"
+                    min={1}
+                    value={layerCount}
+                    onChange={(event) => {
+                      setLayerCount(Number(event.target.value));
+                      clearFieldError("layerCount");
+                    }}
+                  />
+                  {errors.layerCount && (
+                    <BodyText className="text-xs text-red-500">
+                      {errors.layerCount}
+                    </BodyText>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="feature-notes">یادداشت‌ها</Label>
+                <Textarea
+                  id="feature-notes"
+                  placeholder="یادداشت‌های داخلی و وابستگی‌ها."
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex justify-start gap-3 border-t border-border pt-4">
@@ -249,13 +383,14 @@ export function FeatureModuleDrawer({
             disabled={!isDirty || isLoading}
             isLoading={isLoading}
           >
-            {mode === "create" ? "ایجاد ماژول ویژگی" : "ذخیره تغییرات"}
+            {mode === "create"
+              ? isLogo
+                ? "ایجاد لوگو"
+                : "ایجاد ماژول ویژگی"
+              : "ذخیره تغییرات"}
           </Button>
         </div>
       </motion.div>
     </motion.div>
   );
 }
-
-
-

@@ -1,4 +1,5 @@
 export { ParticipantsStep } from "./ParticipantsStep";
+export { InvoiceStep } from "./InvoiceStep";
 export { MirrorStep } from "./MirrorStep";
 export { FrameStep } from "./FrameStep";
 export { SandblastStep } from "./SandblastStep";

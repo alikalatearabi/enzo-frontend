@@ -56,6 +56,18 @@ export type OrderRoFull = {
   status: OrderStatus;
   price: number;
   invoiceID: string;
+  /** Populated invoice when returned by getOrderById */
+  invoice?: {
+    id: string;
+    invoiceNumber?: string;
+    totalPrice?: number;
+    status?: string;
+    customer?: string;
+    cutter?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  logo?: { id: string } | string;
   createdAt: string | Date;
   updatedAt: string | Date;
 };
@@ -125,23 +137,22 @@ export type CreateOrderPayload = {
   description?: string;
   count: number;
   mirror: string;
-  backLight: string;
+  backLight?: string;
   lol: string;
   height: number;
   width: number;
   thickness: string;
   mirrorModule: string[];
-  zoom: string;
+  zoom?: string;
   sandblast: string;
-  frame: string;
-  lightThread: string;
+  frame?: string;
+  lightThread?: string;
   cornerBend?: number;
-  customer: string;
-  cutter: string;
   startDate: string;
   endDate: string;
   status?: OrderStatus;
-  invoiceID: string;
+  invoice?: string;
+  logo: string;
 };
 
 // Payload used for updating an order from the wizard
@@ -165,5 +176,20 @@ export async function updateOrder(
   payload: UpdateOrderPayload,
 ): Promise<OrderRoFull> {
   return apiClient.patch<OrderRoFull>(`/orders/${id}`, payload);
+}
+
+export async function getOrdersByInvoiceId(
+  invoiceId: string,
+): Promise<OrderRoFull[]> {
+  return apiClient.get<OrderRoFull[]>(`/orders/invoice/${invoiceId}`);
+}
+
+export async function assignOrderToInvoice(
+  orderId: string,
+  invoiceId: string,
+): Promise<OrderRoFull> {
+  return apiClient.patch<OrderRoFull>(`/orders/${orderId}/assign-invoice`, {
+    invoiceId,
+  });
 }
 

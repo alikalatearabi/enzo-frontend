@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useReducer } from "react";
+import { User } from "@/lib/api/users";
 
 export type OrderWizardStepId =
+  | "invoice"
   | "mirror"
   | "frame"
   | "sandblast"
   | "mirrorComponents"
-  | "participants"
   | "schedule"
   | "review";
 
@@ -18,8 +19,6 @@ export type OrderStatusOption =
   | "LEAVING_WAREHOUSE";
 
 export type OrderWizardData = {
-  customer?: string;
-  cutter?: string;
   mirror?: string;
   frame?: string;
   lightThread?: string;
@@ -36,11 +35,25 @@ export type OrderWizardData = {
   startDate?: string;
   endDate?: string;
   status: OrderStatusOption;
+  /** Logo ID (required by backend) */
+  logo?: string;
+  /** Order code (required by backend on update) */
+  code?: string;
+  /** Order price (required by backend on update) */
+  price?: number;
+  customer?: User;
+  cutter?: User;
+  invoiceNumber?: number;
+  /** When adding order from invoice list: "new" = create invoice, "existing" = pick from list */
+  invoiceChoice?: "new" | "existing";
+  /** When invoiceChoice === "existing", the selected invoice id */
+  selectedExistingInvoiceId?: string;
 };
 
 export type OrderWizardState = {
   currentStep: number;
   data: OrderWizardData;
+  stepsLength: number;
 };
 
 type OrderWizardAction =
@@ -51,15 +64,7 @@ type OrderWizardAction =
   | { type: "GO_TO_STEP"; payload: number }
   | { type: "RESET" };
 
-const INITIAL_STATE: OrderWizardState = {
-  currentStep: 0,
-  data: {
-    mirrorModule: [],
-    status: "PROFORMA_INVOICE",
-  },
-};
-
-const STEPS: Array<{
+const ORDER_STEPS: Array<{
   id: OrderWizardStepId;
   title: string;
   description: string;
@@ -85,11 +90,6 @@ const STEPS: Array<{
     description: "انتخاب نخ نوری، ضخامت و ماژول‌های آینه.",
   },
   {
-    id: "participants",
-    title: "مشتری و برشکار",
-    description: "تعیین ذینفعان مسئول این سفارش کار.",
-  },
-  {
     id: "schedule",
     title: "زمان‌بندی و یادداشت‌ها",
     description: "تعریف بازه تولید و یادداشت‌های اختیاری.",
@@ -100,6 +100,21 @@ const STEPS: Array<{
     description: "بررسی مجدد جزئیات قبل از ارسال سفارش.",
   },
 ];
+
+const INVOICE_STEP = {
+  id: "invoice" as const,
+  title: "صورت‌حساب",
+  description: "انتخاب یا ایجاد صورت‌حساب.",
+};
+
+const INITIAL_STATE: OrderWizardState = {
+  currentStep: 0,
+  data: {
+    mirrorModule: [],
+    status: "PROFORMA_INVOICE",
+  },
+  stepsLength: ORDER_STEPS.length,
+};
 
 function reducer(state: OrderWizardState, action: OrderWizardAction): OrderWizardState {
   switch (action.type) {
@@ -129,7 +144,7 @@ function reducer(state: OrderWizardState, action: OrderWizardAction): OrderWizar
     case "NEXT_STEP":
       return {
         ...state,
-        currentStep: Math.min(state.currentStep + 1, STEPS.length - 1),
+        currentStep: Math.min(state.currentStep + 1, state.stepsLength - 1),
       };
     case "PREV_STEP":
       return {
@@ -139,7 +154,7 @@ function reducer(state: OrderWizardState, action: OrderWizardAction): OrderWizar
     case "GO_TO_STEP":
       return {
         ...state,
-        currentStep: Math.min(Math.max(action.payload, 0), STEPS.length - 1),
+        currentStep: Math.min(Math.max(action.payload, 0), state.stepsLength - 1),
       };
     case "RESET":
       return INITIAL_STATE;
@@ -148,18 +163,32 @@ function reducer(state: OrderWizardState, action: OrderWizardAction): OrderWizar
   }
 }
 
-function validateStep(stepIndex: number, data: OrderWizardData) {
-  switch (STEPS[stepIndex]?.id) {
-    case "participants":
-      return Boolean(data.customer && data.cutter);
+function validateStep(
+  stepId: OrderWizardStepId,
+  data: OrderWizardData,
+): boolean {
+  switch (stepId) {
+    case "invoice":
+      if (data.invoiceChoice === "existing") {
+        return Boolean(data.selectedExistingInvoiceId);
+      }
+      if (data.invoiceChoice === "new") {
+        return Boolean(
+          data.invoiceNumber != null &&
+            String(data.invoiceNumber).trim() !== "" &&
+            data.customer?._id &&
+            data.cutter?._id,
+        );
+      }
+      return false;
     case "mirror":
-      return Boolean(data.mirror);
+      return Boolean(data.mirror && data.count && data.count > 0 && data.height && data.width);
     case "frame":
-      return Boolean(data.frame);
+      return true;
     case "sandblast":
-      return true; // Optional step
+      return Boolean(data.sandblast);
     case "mirrorComponents":
-      return Boolean(data.lightThread && data.thickness);
+      return Boolean(data.thickness && data.logo);
     case "schedule":
       return Boolean(data.startDate && data.endDate);
     case "review":
@@ -169,41 +198,72 @@ function validateStep(stepIndex: number, data: OrderWizardData) {
   }
 }
 
-export function useOrderWizard(initialState?: Partial<OrderWizardData>) {
+export function useOrderWizard(
+  initialState?: Partial<OrderWizardData>,
+  withInvoiceStep?: boolean,
+) {
+  const stepsLength = withInvoiceStep
+    ? 1 + ORDER_STEPS.length
+    : ORDER_STEPS.length;
+
   const [state, dispatch] = useReducer(reducer, {
     ...INITIAL_STATE,
+    stepsLength,
     data: {
       ...INITIAL_STATE.data,
+      ...(withInvoiceStep ? { invoiceChoice: "new" as const } : {}),
       ...initialState,
     },
   });
 
-  const canProceed = useMemo(
-    () => validateStep(state.currentStep, state.data),
-    [state.currentStep, state.data],
-  );
-
-  const steps = useMemo(
-    () =>
-      STEPS.map((step, index) => ({
+  const steps = useMemo(() => {
+    const orderSteps = ORDER_STEPS.map((step, i) => {
+      const stepIndex = withInvoiceStep ? i + 1 : i;
+      return {
         ...step,
-        index,
+        index: stepIndex,
         status:
-          index < state.currentStep
+          state.currentStep > stepIndex
             ? ("complete" as const)
-            : index === state.currentStep
+            : state.currentStep === stepIndex
               ? ("current" as const)
               : ("upcoming" as const),
-      })),
-    [state.currentStep],
+      };
+    });
+    if (withInvoiceStep) {
+      return [
+        {
+          ...INVOICE_STEP,
+          index: 0,
+          status:
+            state.currentStep > 0
+              ? ("complete" as const)
+              : state.currentStep === 0
+                ? ("current" as const)
+                : ("upcoming" as const),
+        },
+        ...orderSteps,
+      ];
+    }
+    return orderSteps;
+  }, [state.currentStep, withInvoiceStep]);
+
+  const currentStepId = steps[state.currentStep]?.id ?? "mirror";
+
+  const canProceed = useMemo(
+    () => validateStep(currentStepId, state.data),
+    [currentStepId, state.data],
   );
 
   return {
     state,
     dispatch,
     steps,
+    stepsLength,
     canProceed,
-    isLastStep: state.currentStep === STEPS.length - 1,
+    isLastStep: state.currentStep === stepsLength - 1,
+    currentStepId,
+    withInvoiceStep: Boolean(withInvoiceStep),
   };
 }
 

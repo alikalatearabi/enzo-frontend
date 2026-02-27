@@ -1,15 +1,4 @@
-/**
- * API Client for Enzo Backend
- *
- * Centralized HTTP client that handles:
- * - Base URL configuration
- * - Request/response serialization
- * - Error handling
- * - Future: Authentication headers
- */
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api/v1";
+const API_BASE_URL =  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api/v1";
 
 export class ApiError extends Error {
   status?: number;
@@ -121,7 +110,6 @@ async function requestMultipart<T>(
   const config: RequestInit = {
     method,
     body: formData,
-    // Don't set Content-Type header - browser will set it with boundary
   };
 
   try {

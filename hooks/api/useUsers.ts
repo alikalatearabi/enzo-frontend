@@ -2,12 +2,7 @@
 
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  User,
-  UserRole,
-  usersApi,
-  type CreateUserPayload,
-} from "@/lib/api/users";
+import { User, UserRole, usersApi, type CreateUserPayload } from "@/lib/api/users";
 
 export function useUsers(role?: UserRole) {
   const query = useQuery<User[]>({

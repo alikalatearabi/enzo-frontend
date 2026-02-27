@@ -5,47 +5,39 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import {
-  PageTitle,
-} from "../ui/typography";
+import { PageTitle } from "../ui/typography";
 import { WizardStepper } from "./WizardStepper";
 import { useToast } from "../ui/feedback/ToastProvider";
-import {
-  useOrderWizard,
-  OrderWizardData,
-  OrderWizardStepId,
-} from "../../hooks/orders/useOrderWizard";
-import { useUsers } from "../../hooks/api/useUsers";
+import { useOrderWizard, OrderWizardData, OrderWizardStepId } from "../../hooks/orders/useOrderWizard";
 import { useMirrors } from "../../hooks/api/useMirrors";
 import { useFeatureModules } from "../../hooks/api/useFeatureModules";
-import { useCreateOrder, useUpdateOrder } from "../../hooks/api/useOrders";
-import {
-  ParticipantsStep,
-  MirrorStep,
-  FrameStep,
-  SandblastStep,
-  MirrorComponentsStep,
-  ScheduleStep,
-  ReviewStep,
-} from "./OrderWizardSteps";
+import { useCreateOrder, useUpdateOrder, useAssignOrderToInvoice } from "../../hooks/api/useOrders";
+import { MirrorStep, FrameStep, SandblastStep, MirrorComponentsStep, ScheduleStep, ReviewStep, InvoiceStep } from "./OrderWizardSteps";
 import { validateStep } from "./OrderWizardSteps/utils";
+import { useInvoicesData } from "@/hooks/invoice/useInvoicesData";
+import { toEnglishDigits } from "@/lib/utils/numbers";
 
 type OrderWizardProps = {
   initialData?: Partial<OrderWizardData>;
   orderId?: string | null;
+  /** When set, we're adding an order to this invoice (no invoice step, assign after create) */
+  invoiceId?: string | null;
 };
 
-export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
+export function OrderWizard({ initialData, orderId, invoiceId }: OrderWizardProps = {}) {
+
   const router = useRouter();
+  const { createInvoice } = useInvoicesData();
+  const withInvoiceStep = !invoiceId && !orderId;
+
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { state, dispatch, steps, isLastStep } = useOrderWizard(initialData);
-  const { data: customers = [] } = useUsers("CUSTOMER");
-  const { data: cutters = [] } = useUsers("CUTTER");
+  const { state, dispatch, steps, isLastStep, currentStepId } = useOrderWizard(initialData, withInvoiceStep);
   const { data: mirrorsRaw = [] } = useMirrors();
   const { data: featureModules = [] } = useFeatureModules();
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
+  const assignOrderToInvoice = useAssignOrderToInvoice();
   const { addToast } = useToast();
 
   const clearError = (field: keyof OrderWizardData | string) => {
@@ -92,8 +84,6 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
       featureModules.filter((feature) => feature.type === "thickness"),
     [featureModules],
   );
-  // Mirror modules are not yet available on the backend,
-  // so keep this list empty for now.
   const moduleOptions: typeof featureModules = useMemo(() => [], [featureModules]);
 
   const mirrors = useMemo(
@@ -107,8 +97,6 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
       })),
     [mirrorsRaw],
   );
-
-  const currentStepId: OrderWizardStepId = steps[state.currentStep].id;
 
   const setStepErrors = (fields: string[], stepErrors: Record<string, string>) => {
     setErrors((prev) => {
@@ -138,57 +126,53 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
 
   const buildCreatePayload = (data: OrderWizardData) => {
     if (
-      !data.customer ||
-      !data.cutter ||
       !data.mirror ||
-      !data.frame ||
-      !data.lightThread ||
-      !data.backLight ||
-      !data.zoom ||
-      !data.sandblast ||
-      !data.thickness ||
       !data.count ||
+      data.count <= 0 ||
       !data.height ||
       !data.width ||
+      !data.thickness ||
+      !data.sandblast ||
       !data.startDate ||
-      !data.endDate
+      !data.endDate ||
+      !data.logo?.trim()
     ) {
       throw new Error("برخی فیلدهای الزامی در ویزارد خالی هستند.");
     }
 
     const timestamp = Date.now();
     const workOrder = `WO-${timestamp}`;
-    const invoiceID = `INV-${timestamp}`;
 
     return {
       workOrder,
       description: data.description ?? "",
       count: data.count,
       mirror: data.mirror,
-      backLight: data.backLight,
       lol: data.mirror, // TODO: map to real LOL once available in UI
       height: data.height,
       width: data.width,
       thickness: data.thickness,
-      mirrorModule: data.mirrorModule,
-      zoom: data.zoom,
+      mirrorModule: data.mirrorModule ?? [],
       sandblast: data.sandblast,
       frame: data.frame,
+      backLight: data.backLight,
       lightThread: data.lightThread,
+      zoom: data.zoom,
       cornerBend: data.cornerBend,
-      customer: data.customer,
-      cutter: data.cutter,
-      startDate: data.startDate,
-      endDate: data.endDate,
+      startDate: toEnglishDigits(data.startDate) || data.startDate,
+      endDate: toEnglishDigits(data.endDate) || data.endDate,
       status: data.status,
-      invoiceID,
+      logo: data.logo.trim(),
     };
   };
 
   const buildUpdatePayload = (data: OrderWizardData) => {
-    // For now, send full payload for simplicity; backend will treat missing fields as unchanged
     const base = buildCreatePayload(data);
-    return base;
+    return {
+      ...base,
+      code: data.code ?? "",
+      price: typeof data.price === "number" ? data.price : 0,
+    };
   };
 
   const onNext = async () => {
@@ -212,17 +196,64 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
       if (orderId) {
         const payload = buildUpdatePayload(state.data);
         await updateOrder.mutateAsync({ id: orderId, payload });
-      } else {
-        const payload = buildCreatePayload(state.data);
-        await createOrder.mutateAsync(payload);
+        addToast({
+          title: "سفارش ثبت شد",
+          description: "سفارش با موفقیت در سیستم ذخیره شد.",
+          variant: "success",
+        });
+        router.push(invoiceId ? `/invoices/${invoiceId}` : "/invoices");
+        return;
       }
 
+      const orderPayload = buildCreatePayload(state.data);
+
+      if (invoiceId) {
+        const created = await createOrder.mutateAsync(orderPayload);
+        await assignOrderToInvoice.mutateAsync({
+          orderId: created.id,
+          invoiceId,
+        });
+        addToast({
+          title: "سفارش ثبت شد",
+          description: "سفارش به صورت‌حساب اضافه شد.",
+          variant: "success",
+        });
+        router.push(`/invoices/${invoiceId}`);
+        return;
+      }
+
+      if (state.data.invoiceChoice === "existing" && state.data.selectedExistingInvoiceId) {
+        const created = await createOrder.mutateAsync(orderPayload);
+        await assignOrderToInvoice.mutateAsync({
+          orderId: created.id,
+          invoiceId: state.data.selectedExistingInvoiceId,
+        });
+        addToast({
+          title: "سفارش ثبت شد",
+          description: "سفارش به صورت‌حساب اضافه شد.",
+          variant: "success",
+        });
+        router.push(`/invoices/${state.data.selectedExistingInvoiceId}`);
+        return;
+      }
+
+      const invoicePayload = {
+        invoiceNumber: String(state.data.invoiceNumber ?? ""),
+        customer: state.data.customer?._id ?? "",
+        cutter: state.data.cutter?._id ?? "",
+      };
+      const createdInvoice = await createInvoice(invoicePayload);
+      const created = await createOrder.mutateAsync(orderPayload);
+      await assignOrderToInvoice.mutateAsync({
+        orderId: created.id,
+        invoiceId: createdInvoice.id,
+      });
       addToast({
         title: "سفارش ثبت شد",
-        description: "سفارش با موفقیت در سیستم ذخیره شد.",
+        description: "صورت‌حساب و سفارش با موفقیت ایجاد شد.",
         variant: "success",
       });
-      router.push("/orders");
+      router.push(`/invoices/${createdInvoice.id}`);
     } catch (error) {
       addToast({
         title: "خطا در ثبت سفارش",
@@ -237,7 +268,7 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
 
   const onBack = () => {
     if (state.currentStep === 0) {
-      router.push("/orders");
+      router.push(invoiceId ? `/invoices/${invoiceId}` : "/invoices");
     } else {
       dispatch({ type: "PREV_STEP" });
     }
@@ -252,14 +283,8 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
     };
 
     switch (currentStepId) {
-      case "participants":
-        return (
-          <ParticipantsStep
-            {...stepProps}
-            customers={customers}
-            cutters={cutters}
-          />
-        );
+      case "invoice":
+        return <InvoiceStep {...stepProps} />;
       case "mirror":
         return (
           <MirrorStep
@@ -298,8 +323,6 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
         return <ScheduleStep {...stepProps} />;
       case "review": {
         const selectedMirror = mirrors.find((mirror) => mirror.id === state.data.mirror);
-        const selectedCustomer = customers.find((customer) => customer._id === state.data.customer);
-        const selectedCutter = cutters.find((cutter) => cutter._id === state.data.cutter);
         const selectedFrame = frameOptions.find((frame) => frame.id === state.data.frame);
         const selectedLightThread = lightThreadOptions.find((item) => item.id === state.data.lightThread);
         const selectedBackLight = backLightOptions.find((item) => item.id === state.data.backLight);
@@ -311,15 +334,15 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
           <ReviewStep
             {...stepProps}
             selectedMirror={selectedMirror}
-            selectedCustomer={selectedCustomer}
-            selectedCutter={selectedCutter}
+            selectedCustomer={state.data.customer}
+            selectedCutter={state.data.cutter}
             selectedFrame={selectedFrame}
             selectedLightThread={selectedLightThread}
             selectedBackLight={selectedBackLight}
             selectedZoom={selectedZoom}
             selectedSandblast={selectedSandblast}
             selectedThickness={selectedThickness}
-            submitted={submitted}
+            invoiceContextLabel={invoiceId ? "این سفارش به صورت‌حساب انتخاب‌شده اضافه می‌شود." : undefined}
           />
         );
       }
@@ -353,23 +376,22 @@ export function OrderWizard({ initialData, orderId }: OrderWizardProps = {}) {
               onClick={onBack}
               className="h-11 px-6 text-sm font-medium transition-all hover:bg-layer-hover"
             >
-              <ChevronRight className="ml-2 h-4 w-4"  style={{ transform: 'translateY(2px)'}} />
-              {state.currentStep === 0 ? "بازگشت به سفارش‌ها" : "قبلی"}
+              <ChevronRight className="ml-2 h-4 w-4" style={{ transform: 'translateY(2px)' }} />
+              {state.currentStep === 0 ? "بازگشت به صورت‌حساب‌ها" : "قبلی"}
             </Button>
             <div className="flex items-center gap-3">
               <Button
                 type="button"
                 variant={isLastStep ? "primary" : "secondary"}
                 onClick={onNext}
-                className={`h-11 px-6 text-sm font-semibold transition-all shadow-sm ${
-                  isLastStep
+                className={`h-11 px-6 text-sm font-semibold transition-all shadow-sm ${isLastStep
                     ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md"
                     : "hover:shadow-md"
-                }`}
+                  }`}
               >
                 {isLastStep ? "ارسال سفارش" : "ادامه"}
-                {!isLastStep && <ChevronLeft className="mr-2 h-4 w-4" style={{ transform: 'translateY(2px)'}} />}
-                {isLastStep && <Check className="mr-2 h-4 w-4"  style={{ transform: 'translateY(2px)'}}/>}
+                {!isLastStep && <ChevronLeft className="mr-2 h-4 w-4" style={{ transform: 'translateY(2px)' }} />}
+                {isLastStep && <Check className="mr-2 h-4 w-4" style={{ transform: 'translateY(2px)' }} />}
               </Button>
             </div>
           </div>
